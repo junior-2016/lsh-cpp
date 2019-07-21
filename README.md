@@ -1,5 +1,5 @@
 ## Require
-- G++ or Clang++ (support C++17)
+- G++ or Clang++ (support C++14)
 - cmake 3.12 
 - Boost 1.65.1
 - anaconda3(python3.7) with numpy and matplotlib installed.
