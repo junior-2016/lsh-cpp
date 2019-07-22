@@ -2,6 +2,6 @@
 #include "include/util.h"
 
 int main() {
-    LSH_CPP::Test::test_k_mer_split();
+    LSH_CPP::Test::test();
     return 0;
 }
