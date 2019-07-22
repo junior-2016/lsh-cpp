@@ -29,8 +29,7 @@ version `GLIBCXX_3.4.26' not found (required by ./lsh_cpp), please replace
 your libstdc++.so.6 in anaconda3 to latest libstdc++ dynamic library. 
 ```bash
 $ find / -name "libstdc++.so*" 
-after this command you can find the latest libstdc++ dynamic library such
-as libstdc++.so.6.0.26
+after this command you can find the latest libstdc++ dynamic library such as libstdc++.so.6.0.26
 $ cp path_of_libstdc++.so.6.0.26 ~/anaconda3/lib/
 $ cd ~/anaconda3/lib/
 $ rm -rf libstdc++.so.6
