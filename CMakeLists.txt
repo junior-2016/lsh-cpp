@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 project(lsh_cpp)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 # for release
@@ -18,7 +18,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${GCC_COVERAGE_COMPILE_FLAGS
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost 1.65.1)
+find_package(Boost REQUIRED)
 
 # find GSL
 find_package(GSL REQUIRED)
@@ -31,8 +31,9 @@ set(PYTHON_LIBRARIES "$ENV{HOME}/anaconda3/lib/libpython3.7m.so")
 # source file path
 file(GLOB source_files "src/include/*.h" "src/include/*.cpp")
 
-include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE})
-add_executable(lsh_cpp src/main.cpp ${source_files})
-target_include_directories(lsh_cpp PRIVATE ${PYTHON_INCLUDE_PATH})
-target_link_libraries(lsh_cpp ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} GSL::gsl GSL::gslcblas)
-
+if (Boost_FOUND AND GSL_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE})
+    add_executable(lsh_cpp src/main.cpp ${source_files})
+    target_include_directories(lsh_cpp PRIVATE ${PYTHON_INCLUDE_PATH})
+    target_link_libraries(lsh_cpp ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} GSL::gsl GSL::gslcblas -lpthread)
+endif ()
