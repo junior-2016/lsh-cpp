@@ -142,6 +142,7 @@ namespace LSH_CPP {
         size_t step = N / ThreadNumber;
         for (size_t i = 0; i < ThreadNumber; i++) {
             threads[i] = std::thread([&](size_t id) {
+                // std::cout << "id :" << id << "\n";
                 size_t begin = id * step, end = (id == ThreadNumber - 1) ? N : (id + 1) * step;
                 for (size_t j = begin; j < end; j++) {
                     result[j] = string.substr(j, k);
@@ -152,48 +153,6 @@ namespace LSH_CPP {
             thread.join();
         }
         return result;
-    }
-
-    // Util内功能函数测试
-    namespace Test {
-        void test_k_mer_split() {
-            std::cout << "============ Test K_mer split. =============\n";
-            auto test_function = [](std::string_view string, size_t k) {
-                if (k >= string.size()) { return std::vector<std::string_view>{string}; }
-                size_t N = string.size() - k + 1;
-                std::vector<std::string_view> result(N);
-                for (size_t i = 0; i < N; i++) {
-                    result[i] = string.substr(i, k);
-                }
-                return result;
-            };
-            std::string s;
-            size_t k = 6;
-            for (int i = 0; i < 10000; i++) {
-                s += "ATCGATTCGATTCCCCTTCATCGTTACCGCGATTCACTGCGIJDCJITTCIFJCJIDFJCJIDGCCCAATICJDICJTTCJDIJFCJF";
-                s += "JCIIDCJIJIQIOJOICDJIJCIJGINCOIDGUIHICIUGIHECHIODHIHAII*(&*(^%^%^$*&)(&(^%$^$*&^))(_(_(*_";
-                s += "4887454548779956123230330356452663262^&%%$%^&%&^(*&*)(&*^%%$%$hJjkjcjdfjhHJFDHHCDHihoHKHK";
-            }
-            auto ret = split_k_mer_fast<DEFAULT_THREAD_NUMBER>(s, k);
-            auto test_ret = test_function(s, k);
-            bool test_pass = true;
-            if (ret.size() != test_ret.size()) {
-                test_pass = false;
-            } else {
-                for (size_t i = 0; i < ret.size(); i++) {
-                    if (test_ret[i] != ret[i]) {
-                        test_pass = false;
-                        std::cerr << i << " " << test_ret[i] << " " << ret[i] << "\n";
-                        break;
-                    }
-                }
-            }
-            if (test_pass) std::cout << "Test pass.\n"; else std::cerr << "Test fail.\n";
-        }
-
-        void test() {
-            test_k_mer_split();
-        }
     }
 }
 #endif //LSH_CPP_UTIL_H

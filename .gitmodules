@@ -4,3 +4,6 @@
 [submodule "third-party/xxhash_cpp"]
 	path = third-party/xxhash_cpp
 	url = https://github.com/RedSpah/xxhash_cpp.git
+[submodule "third-party/parallel-hashmap"]
+	path = third-party/parallel-hashmap
+	url = https://github.com/greg7mdp/parallel-hashmap.git

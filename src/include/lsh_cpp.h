@@ -22,6 +22,9 @@
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <chrono>
+#include <random>
+#include <limits>
 
 // C std include
 #include <cstdint>
@@ -35,6 +38,7 @@
 #include "../../third-party/matplotlib-cpp/matplotlibcpp.h"
 #include "../../third-party/xxhash_cpp/xxhash/xxhash.hpp"
 #include "gsl/gsl_integration.h"
+#include "../../third-party/parallel-hashmap/parallel_hashmap/phmap.h"
 
 // Self include
 #include "config.h"

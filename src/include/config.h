@@ -5,5 +5,5 @@
 #ifndef LSH_CPP_CONFIG_H
 #define LSH_CPP_CONFIG_H
 
-const size_t DEFAULT_THREAD_NUMBER = 32;
+const size_t DEFAULT_THREAD_NUMBER = 2;
 #endif //LSH_CPP_CONFIG_H
