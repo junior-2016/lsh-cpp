@@ -28,6 +28,9 @@ set(PYTHON_INCLUDE_PATH "$ENV{HOME}/anaconda3/include/python3.7m")
 set(NUMPY_CONDA_INCLUDE "$ENV{HOME}/anaconda3/lib/python3.7/site-packages/numpy/core/include")
 set(PYTHON_LIBRARIES "$ENV{HOME}/anaconda3/lib/libpython3.7m.so")
 
+# add google abseil-cpp library dependency
+add_subdirectory(./third-party/abseil-cpp)
+
 # source file path
 file(GLOB source_files "src/include/*.h" "src/include/*.cpp")
 
@@ -35,5 +38,6 @@ if (Boost_FOUND AND GSL_FOUND)
     include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE})
     add_executable(lsh_cpp src/main.cpp ${source_files})
     target_include_directories(lsh_cpp PRIVATE ${PYTHON_INCLUDE_PATH})
-    target_link_libraries(lsh_cpp ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} GSL::gsl GSL::gslcblas -lpthread)
+    target_link_libraries(lsh_cpp absl::hash ${Boost_LIBRARIES} ${PYTHON_LIBRARIES}
+            GSL::gsl GSL::gslcblas -lpthread)
 endif ()

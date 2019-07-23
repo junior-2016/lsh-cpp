@@ -9,6 +9,12 @@
 
 namespace LSH_CPP {
     class MinHash {
+    public:
+        using HashValueType = uint32_t; // 内部储存的最小哈希类型为uint32
+
+    private:
+
+    public:
 
     };
 }

@@ -7,7 +7,7 @@
 
 #include "lsh_cpp.h"
 #include "util.h"
-
+#include "io.h"
 
 namespace LSH_CPP::Test {
     using double_second = std::chrono::duration<double>;
@@ -21,7 +21,7 @@ namespace LSH_CPP::Test {
     using RANDOM_NUMBER_TYPE = uint64_t;
     const RANDOM_NUMBER_TYPE MAX_RANDOM_NUMBER = std::numeric_limits<RANDOM_NUMBER_TYPE>::max();
     const RANDOM_NUMBER_TYPE MIN_RANDOM_NUMBER = 1;
-    const size_t MAX_RANDOM_ARRAY_SIZE = 1000000;
+    const size_t MAX_RANDOM_ARRAY_SIZE = 10000000;
     static std::vector<uint64_t> random_array(MAX_RANDOM_ARRAY_SIZE);
 
     template<typename ReturnType, typename F, typename... Args>
@@ -73,8 +73,8 @@ namespace LSH_CPP::Test {
         }
         auto ret = compute_function_time<std::vector<std::string_view >>(split_k_mer_fast<DEFAULT_THREAD_NUMBER>, s, k);
         auto test_ret = compute_function_time<std::vector<std::string_view>>(test_function, s, k);
-        printf("split_k_mer_fast time:%.8f second\n", ret.second);
-        printf("split_k_mer_single_thread:%.8f second\n", test_ret.second);
+        printf("split_k_mer_fast: %.8f second\n", ret.second);
+        printf("split_k_mer_single_thread: %.8f second\n", test_ret.second);
         bool test_pass = true;
         if (ret.first.size() != test_ret.first.size()) {
             test_pass = false;
@@ -95,15 +95,33 @@ namespace LSH_CPP::Test {
         using std_hash_map = std::unordered_map<uint64_t, std::string>;
         using parallel_hash_map = phmap::flat_hash_map<uint64_t, std::string>;
         printf("std::unordered_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert < std_hash_map > ));
+               compute_function_time(hash_map_create_and_insert<std_hash_map>));
         printf("phmap::flat_hash_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert < parallel_hash_map > ));
+               compute_function_time(hash_map_create_and_insert<parallel_hash_map>));
+    }
+
+    void test_hash() {
+        std::cout << "============ Test Hash Function =============\n";
+        std::string s;
+        size_t k = 1000;
+        for (int i = 0; i < 1000000; i++) {
+            s += "abcdefghijklmnopqrstuvwxyz";
+        }
+        auto string_array = split_k_mer_fast<DEFAULT_THREAD_NUMBER>(s, k);
+        printf("absl hash performance %.8f seconds\n", compute_function_time(DefaultStringHash(), string_array));
+        printf("std hash performance %.8f seconds\n", compute_function_time(StdStringHash(), string_array));
+        std::vector<std::string_view> array = {"hello", "hello", "you", "me", "my", "you", "please", "hello"};
+        auto ret = DefaultStringHash()(array);
+        print_container<std::string_view>(array);
+        printf("hash result:\n");
+        print_container<size_t>(ret);
     }
 
     void test() {
         init();
         test_hash_map_performance();
         test_k_mer_split();
+        test_hash();
     }
 }
 #endif //LSH_CPP_TEST_H

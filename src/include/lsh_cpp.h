@@ -35,9 +35,12 @@
 #include <cassert>
 
 // Third-party include
+#define PHMAP_USE_ABSL_HASHEQ // use absl::Hash as phmap hash framework
+
 #include "../../third-party/matplotlib-cpp/matplotlibcpp.h"
-#include "../../third-party/xxhash_cpp/xxhash/xxhash.hpp"
 #include "gsl/gsl_integration.h"
+#include "../../third-party/abseil-cpp/absl/hash/hash.h"
+#include "../../third-party/parallel-hashmap/parallel_hashmap/phmap_fwd_decl.h"
 #include "../../third-party/parallel-hashmap/parallel_hashmap/phmap.h"
 
 // Self include
