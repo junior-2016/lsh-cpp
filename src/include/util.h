@@ -1,3 +1,9 @@
+#include <utility>
+
+#include <utility>
+
+#include <utility>
+
 //
 // Created by junior on 19-7-22.
 //
@@ -8,17 +14,17 @@
 #include "lsh_cpp.h"
 
 namespace LSH_CPP {
-/**
- * Non-capture lambda can be transfer to function pointer directly.
- * @tparam Func lambda expression type : [](double,void*)->double{...}
- * @param f : integration function for gsl_function
- * @param range : integration interval from range.first to range.second
- * @param params : parameters array for gsl_function
- * gsl integration api:
- * int gsl_integration_qags (const gsl_function * f, double a, double b, double epsabs,
- * double epsrel, size_t limit, gsl_integration_workspace * workspace,
- * double * result, double * abserr)
- */
+    /**
+     * Non-capture lambda can be transfer to function pointer directly.
+     * @tparam Func lambda expression type : [](double,void*)->double{...}
+     * @param f : integration function for gsl_function
+     * @param range : integration interval from range.first to range.second
+     * @param params : parameters array for gsl_function
+     * gsl integration api:
+     * int gsl_integration_qags (const gsl_function * f, double a, double b, double epsabs,
+     * double epsrel, size_t limit, gsl_integration_workspace * workspace,
+     * double * result, double * abserr)
+     */
     template<typename Func>
     double numerical_integration(Func &&f, std::pair<double, double> range, double *params) {
         gsl_integration_workspace *w = gsl_integration_workspace_alloc(1000);
@@ -68,96 +74,48 @@ namespace LSH_CPP {
     using DefaultStringHash = hash<absl::Hash, std::string_view>;
     using StdStringHash = hash<std::hash, std::string_view>;
 
-/**
-* split string to k_mer.
-* @tparam ThreadNumber 线程数量
-* @param string 源字符串,考虑用 string_view 优化,因为string_view只储存一个data pointer和一个字符串长度,
-* 这样使用substr()将不会有任何的内存开销,速度也相对更快,只需要保证源字符串自始至终都存在(不被析构)就好.
-* 参考: https://stackoverflow.com/questions/42921998/c-efficiently-get-substring-of-string-with-index
-* 经过比较,使用std::string_view比直接用std::string快了一倍!
-* 但是string_view毕竟只是持有原字符串的地址,所以一旦发生源字符串的析构就会导致严重错误,比如我下面的调用代码:
-* int main(){
-*     std::vector<std::string_view> ret;
-*     {
-*        std::string s = "abcdefghijklmnopqrstuvwxyz";
-*        ret = split_k_mer<32>(s, 3);
-*     } // 离开作用域后源字符串s被析构
-*     for (const auto& item:ret){
-*        std::cout<<item<<" ";
-*        // 输出ret的元素,这时string_view持有的地址所在的内容已经析构或者被别的方式处理了,
-*        // 此时输出结果是 undefined behavior (未定义行为).
-*     }
-* }
-* 为了解决这个问题,需要引入一个数据结构,将源字符串和string_view的子串数组打包起来即可,打包后上面的代码将无法通过编译,
-* 因为打包后的K_mer结构体只能初始化一次且无法进行任何方式的二次赋值.
-*
-* 不过打包后发现性能略微有些下降.如果直接用string_view作为参数,速度可以更快,所以我提供了另一个使用string_view做参数的版本,
-* 需要注意的是这个版本需要时刻考虑源字符串的生命周期.
-* @param k k_mer子串长度
-* @return k_mer集合
-*/
-    struct K_mer {
-        const std::string origin_string;
-        std::vector<std::string_view> sub_strings;
-    };
-
-    template<size_t ThreadNumber>
-    K_mer split_k_mer(const std::string &string, size_t k) {
-        std::string_view view = string;
-        if (k >= string.size()) { return K_mer{string, {view}}; }
-        size_t N = string.size() - k + 1;
-        K_mer result{string, std::vector<std::string_view>(N)};
-        if (N <= 4 * ThreadNumber) { // k_mer数量不够多的话,依然用单线程.
-            for (size_t i = 0; i < N; i++) {
-                result.sub_strings[i] = view.substr(i, k);
-            }
-            return result;
-        }
-        std::vector<std::thread> threads(ThreadNumber);
-        size_t step = N / ThreadNumber;
-        for (size_t i = 0; i < ThreadNumber; i++) {
-            threads[i] = std::thread([&](size_t id) {
-                size_t begin = id * step, end = (id == ThreadNumber - 1) ? N : (id + 1) * step;
-                for (size_t j = begin; j < end; j++) {
-                    result.sub_strings[j] = view.substr(j, k);
-                }
-            }, i);
-        }
-        for (auto &thread:threads) {
-            thread.join();
-        }
-        return result;
-    }
-
+    /**
+     *
+     * split string to k_mer.
+     * @param string 源字符串,考虑用 string_view 优化,因为string_view只储存一个data pointer和一个字符串长度,
+     * 这样使用substr()将不会有任何的内存开销,速度也相对更快,只需要保证源字符串自始至终都存在(不被析构)就好.
+     * 参考: https://stackoverflow.com/questions/42921998/c-efficiently-get-substring-of-string-with-index
+     * 经过比较,使用std::string_view比直接用std::string快了一倍!
+     * 但是string_view毕竟只是持有原字符串的地址,所以一旦发生源字符串的析构就会导致严重错误,比如我下面的调用代码:
+     * int main(){
+     *     std::vector<std::string_view> ret;
+     *     {
+     *        std::string s = "abcdefghijklmnopqrstuvwxyz";
+     *        ret = split_k_mer<32>(s, 3);
+     *     } // 离开作用域后源字符串s被析构
+     *     for (const auto& item:ret){
+     *        std::cout<<item<<" ";
+     *        // 输出ret的元素,这时string_view持有的地址所在的内容已经析构或者被别的方式处理了,
+     *        // 此时输出结果是 undefined behavior (未定义行为).
+     *     }
+     * }
+     * 因此在使用string_view时要格外小心源字符串的生命周期
+     */
     // 更快的k_mer_split,但是需要考虑源字符串的生命周期.
     // 使用std::string_view做参数不需要引用,因为开销已经足够小,加不加引用没有区别
-    template<size_t ThreadNumber>
     std::vector<std::string_view> split_k_mer_fast(std::string_view string, size_t k) {
         if (k >= string.size()) { return {string}; }
         size_t N = string.size() - k + 1;
-        std::vector<std::string_view> result(N);
-        if (N <= 4 * ThreadNumber) { // k_mer数量不够多的话,依然用单线程.
-            for (size_t i = 0; i < N; i++) {
-                result[i] = string.substr(i, k);
-            }
-            return result;
-        }
-        std::vector<std::thread> threads(ThreadNumber);
-        size_t step = N / ThreadNumber;
-        for (size_t i = 0; i < ThreadNumber; i++) {
-            threads[i] = std::thread([&](size_t id) {
-                // std::cout << "id :" << id << "\n";
-                size_t begin = id * step, end = (id == ThreadNumber - 1) ? N : (id + 1) * step;
-                for (size_t j = begin; j < end; j++) {
-                    result[j] = string.substr(j, k);
-                }
-            }, i);
-        }
-        for (auto &thread:threads) {
-            thread.join();
+        std::vector<std::string_view> result;
+        result.reserve(N);
+        for (size_t i = 0; i < N; i++) {
+            result.push_back(string.substr(i, k));
         }
         return result;
     }
 
+    // 废弃使用 K_mer
+//    struct K_mer {
+//        const std::string origin_string;
+//        std::vector<std::string_view> sub_strings;
+//
+//        K_mer(std::string origin_string, std::vector<std::string_view> sub_strings) :
+//                origin_string(std::move(origin_string)), sub_strings(std::move(sub_strings)) {}
+//    };
 }
 #endif //LSH_CPP_UTIL_H

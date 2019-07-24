@@ -22,7 +22,7 @@ namespace LSH_CPP::Test {
     const RANDOM_NUMBER_TYPE MAX_RANDOM_NUMBER = std::numeric_limits<RANDOM_NUMBER_TYPE>::max();
     const RANDOM_NUMBER_TYPE MIN_RANDOM_NUMBER = 1;
     const size_t MAX_RANDOM_ARRAY_SIZE = 10000000;
-    static std::vector<uint64_t> random_array(MAX_RANDOM_ARRAY_SIZE);
+    std::vector<uint64_t> random_array;
 
     template<typename ReturnType, typename F, typename... Args>
     std::pair<ReturnType, double> compute_function_time(F func, Args &&... args) {
@@ -42,8 +42,9 @@ namespace LSH_CPP::Test {
         std::random_device rd;  // 将用于为随机数引擎获得种子
         std::mt19937 gen(rd()); // 以播种标准 mersenne_twister_engine
         std::uniform_int_distribution<RANDOM_NUMBER_TYPE> dis(MIN_RANDOM_NUMBER, MAX_RANDOM_NUMBER);
+        random_array.reserve(MAX_RANDOM_ARRAY_SIZE);
         for (size_t i = 0; i < MAX_RANDOM_ARRAY_SIZE; i++) {
-            random_array[i] = dis(gen);
+            random_array.push_back(dis(gen));
         }
     }
 
@@ -57,37 +58,14 @@ namespace LSH_CPP::Test {
 
     void test_k_mer_split() {
         std::cout << "============ Test K_mer split. =============\n";
-        auto test_function = [](std::string_view string, size_t k) {
-            if (k >= string.size()) { return std::vector<std::string_view>{string}; }
-            size_t N = string.size() - k + 1;
-            std::vector<std::string_view> result(N);
-            for (size_t i = 0; i < N; i++) {
-                result[i] = string.substr(i, k);
-            }
-            return result;
-        };
         std::string s;
         size_t k = 9;
         for (int i = 0; i < 1000000; i++) {
             s += "abcdefghijklmnopqrstuvwxyz";
         }
-        auto ret = compute_function_time<std::vector<std::string_view >>(split_k_mer_fast<DEFAULT_THREAD_NUMBER>, s, k);
-        auto test_ret = compute_function_time<std::vector<std::string_view>>(test_function, s, k);
-        printf("split_k_mer_fast: %.8f second\n", ret.second);
-        printf("split_k_mer_single_thread: %.8f second\n", test_ret.second);
-        bool test_pass = true;
-        if (ret.first.size() != test_ret.first.size()) {
-            test_pass = false;
-        } else {
-            for (size_t i = 0; i < ret.first.size(); i++) {
-                if (test_ret.first[i] != ret.first[i]) {
-                    test_pass = false;
-                    std::cerr << i << " " << test_ret.first[i] << " " << ret.first[i] << "\n";
-                    break;
-                }
-            }
-        }
-        if (test_pass) std::cout << "Test pass.\n"; else std::cerr << "Test fail.\n";
+        auto ret = compute_function_time<std::vector<std::string_view >>(split_k_mer_fast, s, k);
+        printf("split_k_mer_fast: %.8f seconds\n", ret.second);
+        // printf("create k_mer time %.8f seconds\n", compute_function_time([&]() { K_mer kMer(s, ret.first); }));
     }
 
     void test_hash_map_performance() {
@@ -95,9 +73,9 @@ namespace LSH_CPP::Test {
         using std_hash_map = std::unordered_map<uint64_t, std::string>;
         using parallel_hash_map = phmap::flat_hash_map<uint64_t, std::string>;
         printf("std::unordered_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert<std_hash_map>));
+               compute_function_time(hash_map_create_and_insert < std_hash_map > ));
         printf("phmap::flat_hash_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert<parallel_hash_map>));
+               compute_function_time(hash_map_create_and_insert < parallel_hash_map > ));
     }
 
     void test_hash() {
@@ -107,14 +85,14 @@ namespace LSH_CPP::Test {
         for (int i = 0; i < 1000000; i++) {
             s += "abcdefghijklmnopqrstuvwxyz";
         }
-        auto string_array = split_k_mer_fast<DEFAULT_THREAD_NUMBER>(s, k);
+        auto string_array = split_k_mer_fast(s, k);
         printf("absl hash performance %.8f seconds\n", compute_function_time(DefaultStringHash(), string_array));
         printf("std hash performance %.8f seconds\n", compute_function_time(StdStringHash(), string_array));
         std::vector<std::string_view> array = {"hello", "hello", "you", "me", "my", "you", "please", "hello"};
         auto ret = DefaultStringHash()(array);
-        print_container<std::string_view>(array);
+        print_sequence_container(array);
         printf("hash result:\n");
-        print_container<size_t>(ret);
+        print_sequence_container(ret);
     }
 
     void test() {

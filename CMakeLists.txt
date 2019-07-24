@@ -39,5 +39,5 @@ if (Boost_FOUND AND GSL_FOUND)
     add_executable(lsh_cpp src/main.cpp ${source_files})
     target_include_directories(lsh_cpp PRIVATE ${PYTHON_INCLUDE_PATH})
     target_link_libraries(lsh_cpp absl::hash ${Boost_LIBRARIES} ${PYTHON_LIBRARIES}
-            GSL::gsl GSL::gslcblas -lpthread)
+            GSL::gsl GSL::gslcblas)
 endif ()

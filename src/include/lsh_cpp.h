@@ -11,6 +11,12 @@
 #include <string>
 
 // C++ std include
+/**
+ * 对于 std::vector 等顺序容器的赋值过程,如果已经提前知道vector需要多少内存,并且不需要做任何初始化赋值
+ * (先初始赋值,后面重新分配值会浪费时间,除非你的初始赋值是有作用的.)
+ * 最优的策略是使用 reserve(N) 直接分配内存但是不初始化,然后紧接着用 push_back(v) 分配你需要的值.
+ * 需要注意的是,如果用了reserve(N),分配值的时候必须用push_back,不能用operator[],否则size不会变化.
+ */
 #include <vector>
 #include <map>
 #include <unordered_map>
@@ -20,8 +26,6 @@
 #include <utility>
 #include <memory>
 #include <functional>
-#include <thread>
-#include <mutex>
 #include <chrono>
 #include <random>
 #include <limits>
