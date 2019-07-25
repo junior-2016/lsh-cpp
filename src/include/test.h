@@ -98,29 +98,31 @@ namespace LSH_CPP::Test {
     }
 
     void test_min_hash() {
-        MinHash hash1(XXStringHash64{});
-        MinHash hash2(XXStringHash64{});
-        std::vector<std::string_view> data1 = {"minhash", "is", "a", "probabilistic", "data", "structure", "for",
+        std::vector<std::string_view> data1 = {"minhashs", "are", "a__", "probabilistic", "data", "structure", "for",
                                                "estimating", "the", "similarity", "between", "datasets"};
 
-        std::vector<std::string_view> data2 = {"minhash", "is", "a", "probability", "data", "structure", "for",
+        std::vector<std::string_view> data2 = {"minhash", "is", "a_", "probability", "data", "structure", "for",
                                                "estimating", "the", "similarity", "between", "documents"};
-        for (const auto &item:data1) {
-            hash1.update(item);
+        std::string s;
+        size_t k = 1000;
+        for (int i = 0; i < 100000; i++) {
+            s += "abcdefghijklmnopqrstuvwxyz";
         }
-        for (const auto &item:data2) {
-            hash2.update(item);
-        }
+        auto string_array = split_k_mer_fast(s, k);
         TimeVar start = timeNow();
-        auto ret = jaccard_similarity(hash1, hash2);
+        MinHash hash1(XXStringHash64{});
+        MinHash hash2(XXStringHash64{});
+        hash1.update(data1);
+        hash2.update(data2);
         double time = duration(timeNow() - start);
-        printf("similarity: %.8f ; time : %.8f seconds", ret, time);
+        start = timeNow();
+        auto ret = jaccard_similarity(hash1, hash2);
+        double time_2 = duration(timeNow() - start);
+        printf("similarity: %.8f ; update-time : %.8f seconds ; similarity-time %.8f \n", ret, time, time_2);
     }
 
-    void test_xxhash() {
-        std::string_view s = "hello";
-        std::cout << s.size() << "\n";
-        std::cout << xxh::xxhash<64>(s.data(), s.size()) << "\n";
+    void test_simd() {
+
     }
 
     void test() {
@@ -129,7 +131,6 @@ namespace LSH_CPP::Test {
         //test_k_mer_split();
         //test_hash();
         test_min_hash();
-        //test_xxhash();
     }
 }
 #endif //LSH_CPP_TEST_H

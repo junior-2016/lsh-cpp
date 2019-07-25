@@ -10,13 +10,13 @@
 #include "io.h"
 
 namespace LSH_CPP {
-    const uint64_t mersenne_prime = (1ull << 61u) - 1u; // 最接近 2^64-1 的梅森素数
-    const size_t max_n_permutation = 256;  // permutation 数量最多256个
+    constexpr static uint64_t mersenne_prime = (1ull << 61u) - 1u; // 最接近 2^64-1 的梅森素数
+    constexpr static size_t max_n_permutation = 256;  // permutation 数量最多256个
 
     /**
      * 生成n个随机hash函数(随机permutation),用于计算 MinHash
      */
-    template<size_t Seed = 1,
+    template<size_t Seed = 0,
             // typename Seed = std::random_device,
             typename RandomGenerator = std::mt19937_64,
             size_t n_permutation = 128>
@@ -94,9 +94,21 @@ namespace LSH_CPP {
             hash_values.resize(n_permutation, _max_hash_range);
         }
 
+        void update(const std::vector<std::string_view> &data) {
+            auto values = hash_func(data);
+            // 考虑sse/avx向量优化
+            for (const auto &value:values) {
+                for (size_t i = 0; i < n_permutation; i++) {
+                    hash_values[i] = std::min(hash_values[i],
+                                              (((value * permutation.vector_a[i] + permutation.vector_b[i]) %
+                                                mersenne_prime) & _max_hash_range));
+                }
+            }
+        }
+
         void update(std::string_view string) {
             auto value = hash_func(string);
-            // 考虑sse向量优化
+            // 考虑sse/avx向量优化
             for (size_t i = 0; i < n_permutation; i++) {
                 uint64_t ret = ((value * permutation.vector_a[i] + permutation.vector_b[i]) % mersenne_prime) &
                                _max_hash_range;
