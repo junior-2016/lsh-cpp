@@ -8,6 +8,7 @@
 #include "lsh_cpp.h"
 #include "util.h"
 #include "io.h"
+#include "minhash.h"
 
 namespace LSH_CPP::Test {
     using double_second = std::chrono::duration<double>;
@@ -73,9 +74,9 @@ namespace LSH_CPP::Test {
         using std_hash_map = std::unordered_map<uint64_t, std::string>;
         using parallel_hash_map = phmap::flat_hash_map<uint64_t, std::string>;
         printf("std::unordered_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert < std_hash_map > ));
+               compute_function_time(hash_map_create_and_insert<std_hash_map>));
         printf("phmap::flat_hash_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert < parallel_hash_map > ));
+               compute_function_time(hash_map_create_and_insert<parallel_hash_map>));
     }
 
     void test_hash() {
@@ -86,20 +87,49 @@ namespace LSH_CPP::Test {
             s += "abcdefghijklmnopqrstuvwxyz";
         }
         auto string_array = split_k_mer_fast(s, k);
-        printf("absl hash performance %.8f seconds\n", compute_function_time(DefaultStringHash(), string_array));
-        printf("std hash performance %.8f seconds\n", compute_function_time(StdStringHash(), string_array));
+        printf("xx_hash performance %.8f seconds\n", compute_function_time(XXStringHash64{}, string_array));
+        printf("absl hash performance %.8f seconds\n", compute_function_time(AbslStringHash64{}, string_array));
+        printf("std hash performance %.8f seconds\n", compute_function_time(DefaultStringHash64{}, string_array));
         std::vector<std::string_view> array = {"hello", "hello", "you", "me", "my", "you", "please", "hello"};
-        auto ret = DefaultStringHash()(array);
+        auto ret = XXStringHash64()(array);
         print_sequence_container(array);
         printf("hash result:\n");
         print_sequence_container(ret);
     }
 
+    void test_min_hash() {
+        MinHash hash1(XXStringHash64{});
+        MinHash hash2(XXStringHash64{});
+        std::vector<std::string_view> data1 = {"minhash", "is", "a", "probabilistic", "data", "structure", "for",
+                                               "estimating", "the", "similarity", "between", "datasets"};
+
+        std::vector<std::string_view> data2 = {"minhash", "is", "a", "probability", "data", "structure", "for",
+                                               "estimating", "the", "similarity", "between", "documents"};
+        for (const auto &item:data1) {
+            hash1.update(item);
+        }
+        for (const auto &item:data2) {
+            hash2.update(item);
+        }
+        TimeVar start = timeNow();
+        auto ret = jaccard_similarity(hash1, hash2);
+        double time = duration(timeNow() - start);
+        printf("similarity: %.8f ; time : %.8f seconds", ret, time);
+    }
+
+    void test_xxhash() {
+        std::string_view s = "hello";
+        std::cout << s.size() << "\n";
+        std::cout << xxh::xxhash<64>(s.data(), s.size()) << "\n";
+    }
+
     void test() {
-        init();
-        test_hash_map_performance();
-        test_k_mer_split();
-        test_hash();
+        //init();
+        //test_hash_map_performance();
+        //test_k_mer_split();
+        //test_hash();
+        test_min_hash();
+        //test_xxhash();
     }
 }
 #endif //LSH_CPP_TEST_H

@@ -1,9 +1,3 @@
-#include <utility>
-
-#include <utility>
-
-#include <utility>
-
 //
 // Created by junior on 19-7-22.
 //
@@ -49,21 +43,35 @@ namespace LSH_CPP {
         return 1.0 - pow(1.0 - pow(x, r), b); // ∫ (0.0 -> threshold) 1 - (1 - s^r)^b
     }
 
-    /**
-     * use absl::Hash as default Hash function
-     */
-    template<template<typename/* KeyType */ > typename Hash, typename KeyType>
+    template<size_t N>
+    struct HashValueType {
+    };
+    template<>
+    struct HashValueType<32> {
+        using type = uint32_t;
+        static constexpr uint64_t max_hash_range = std::numeric_limits<uint32_t>::max(); // 0x00000000FFFFFFFF
+    };
+    template<>
+    struct HashValueType<64> {
+        using type  = uint64_t;
+        static constexpr uint64_t max_hash_range = std::numeric_limits<uint64_t>::max(); // 0xFFFFFFFFFFFFFFFF
+    };
+
+    template<template<typename/* KeyType */ > typename Hash, typename KeyType, size_t Bits = 64>
     struct hash {
-        static inline size_t __hash(const KeyType &key) {
+        static inline typename HashValueType<Bits>::type __hash(const KeyType &key) {
+            static_assert(Bits == 32 || Bits == 64);
             return Hash<KeyType>{}(key);
         }
 
-        inline size_t operator()(const KeyType &key) {
+        inline typename HashValueType<Bits>::type operator()(const KeyType &key) {
+            static_assert(Bits == 32 || Bits == 64);
             return __hash(key);
         }
 
-        inline std::vector<size_t> operator()(const std::vector<KeyType> &array) {
-            std::vector<size_t> ret(array.size());
+        inline std::vector<typename HashValueType<Bits>::type> operator()(const std::vector<KeyType> &array) {
+            static_assert(Bits == 32 || Bits == 64);
+            std::vector<typename HashValueType<Bits>::type> ret(array.size());
             for (size_t i = 0; i < array.size(); i++) {
                 ret[i] = __hash(array[i]);
             }
@@ -71,8 +79,35 @@ namespace LSH_CPP {
         }
     };
 
-    using DefaultStringHash = hash<absl::Hash, std::string_view>;
-    using StdStringHash = hash<std::hash, std::string_view>;
+    template<typename T>
+    struct xx_Hash {
+
+    };
+
+    // wrap xx_hash library to LSH_CPP::xx_Hash. only implement for string_view and string.
+    // use xxh::hash64_t(actual type is uint64_t) as hash type
+    // (because xxh::hash64_t is faster than xxh::hash32_t on x86_64)
+    template<>
+    struct xx_Hash<std::string_view> {
+        inline uint64_t operator()(std::string_view stringView) {
+            return xxh::xxhash<64>(stringView.data(), stringView.size());
+        }
+    };
+
+    template<>
+    struct xx_Hash<std::string> {
+        inline uint64_t operator()(const std::string &string) {
+            return xxh::xxhash<64>(string);
+        }
+    };
+
+    using XXStringHash64 = hash<xx_Hash, std::string_view, 64>;
+    using XXStringHash32 = hash<xx_Hash, std::string_view, 32>;
+    using DefaultStringHash64 = hash<std::hash, std::string_view, 64>;
+    using DefaultStringHash32 = hash<std::hash, std::string_view, 32>;
+    using AbslStringHash64 = hash<absl::Hash, std::string_view, 64>;
+    using AbslStringHash32 = hash<absl::Hash, std::string_view, 32>;
+
 
     /**
      *

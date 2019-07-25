@@ -39,13 +39,19 @@
 #include <cassert>
 
 // Third-party include
-#define PHMAP_USE_ABSL_HASHEQ // use absl::Hash as phmap hash framework
+#define PHMAP_USE_ABSL_HASHEQ      // use absl::Hash as phmap hash framework
+
+// phmap默认不使用带随机因子的哈希,所以这里不需要显式设置NON_DETERMINISTIC为0.
+// 当前场景是不需要随机性的哈希的(只有在web服务器为了防止他人哈希攻击才需要引入随机因子)
+// #define PHMAP_NON_DETERMINISTIC 0
 
 #include "../../third-party/matplotlib-cpp/matplotlibcpp.h"
 #include "gsl/gsl_integration.h"
 #include "../../third-party/abseil-cpp/absl/hash/hash.h"
 #include "../../third-party/parallel-hashmap/parallel_hashmap/phmap_fwd_decl.h"
 #include "../../third-party/parallel-hashmap/parallel_hashmap/phmap.h"
+#include "../../third-party/xxhash_cpp/xxhash/xxhash.h"
+#include "../../third-party/xxhash_cpp/xxhash/xxhash.hpp"
 
 // Self include
 #include "config.h"
