@@ -74,9 +74,9 @@ namespace LSH_CPP::Test {
         using std_hash_map = std::unordered_map<uint64_t, std::string>;
         using parallel_hash_map = phmap::flat_hash_map<uint64_t, std::string>;
         printf("std::unordered_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert < std_hash_map > ));
+               compute_function_time(hash_map_create_and_insert<std_hash_map>));
         printf("phmap::flat_hash_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert < parallel_hash_map > ));
+               compute_function_time(hash_map_create_and_insert<parallel_hash_map>));
     }
 
     void test_hash() {
@@ -98,10 +98,10 @@ namespace LSH_CPP::Test {
     }
 
     void test_min_hash() {
-        std::vector<std::string_view> data1 = {"minhashs", "are", "a__", "probabilistic", "data", "structure", "for",
+        std::vector<std::string_view> data1 = {"minhash", "is", "a", "probabilistic", "data", "structure", "for",
                                                "estimating", "the", "similarity", "between", "datasets"};
 
-        std::vector<std::string_view> data2 = {"minhash", "is", "a_", "probability", "data", "structure", "for",
+        std::vector<std::string_view> data2 = {"minhash", "is", "a", "probability", "data", "structure", "for",
                                                "estimating", "the", "similarity", "between", "documents"};
         std::string s;
         size_t k = 1000;
@@ -109,11 +109,11 @@ namespace LSH_CPP::Test {
             s += "abcdefghijklmnopqrstuvwxyz";
         }
         auto string_array = split_k_mer_fast(s, k);
-        TimeVar start = timeNow();
         MinHash hash1(XXStringHash64{});
         MinHash hash2(XXStringHash64{});
-        hash1.update(data1);
-        hash2.update(data2);
+        TimeVar start = timeNow();
+        hash1.update(string_array);
+        hash2.update(string_array);
         double time = duration(timeNow() - start);
         start = timeNow();
         auto ret = jaccard_similarity(hash1, hash2);
@@ -121,69 +121,12 @@ namespace LSH_CPP::Test {
         printf("similarity: %.8f ; update-time : %.8f seconds ; similarity-time %.8f \n", ret, time, time_2);
     }
 
-    namespace xs = xsimd;
-    template<typename T>
-    using vector_type = std::vector<T, xsimd::aligned_allocator<T, XSIMD_DEFAULT_ALIGNMENT>>;
-
-    template<typename T>
-    void mean(const vector_type<T> &a, const vector_type<T> &b, vector_type<T> &res) {
-        std::size_t size = a.size();                                  // T类型大小 size
-        constexpr std::size_t simd_size = xsimd::simd_type<T>::size;  // T类型在simd的大小,一般simd_size是size的几倍
-        std::size_t vec_size = size - size % simd_size;  // 计算for循环每次加一个simd_size后,最大的上界.当继续加size_size超过这个上界时就结束循环
-        for (std::size_t i = 0; i < vec_size; i += simd_size) {
-            // 每一个循环步骤在和原来循环几乎同样的指令周期内计算simd_size大小的数据量.
-            // 相当于一次循环展开而且还没有多余的指令开销.
-            auto ba = xs::load_aligned(&a[i]);
-            auto bb = xs::load_aligned(&b[i]);
-            auto bres = (ba + bb) / 2;
-            bres.(&res[i]);
-        }
-        for (std::size_t i = vec_size; i < size; ++i) {  // 将res中剩下的部分计算完(无法放在一个simd_size直接计算),就按照传统的一步步循环计算即可.
-            res[i] = (a[i] + b[i]) / 2;
-        }
-    }
-
-
-    void mean_(const std::vector<double> &a, const std::vector<double> &b, std::vector<double> &res) {
-        std::size_t size = res.size();
-        for (std::size_t i = 0; i < size; ++i) {
-            res[i] = (a[i] + b[i]) / 2;
-        }
-    }
-
-    void test_simd() {
-        // 使用带有侵入性的 xsimd::batch,而且只能使用avx指令(文档好像是这样写)
-//        xsimd::batch<double, 4> a(1.5, 2.5, 3.5, 4.5);
-//        xsimd::batch<double, 4> b(2.5, 3.5, 4.5, 5.5);
-//        auto batch_ret = (a + b) / 2;  // 返回的是 xsimd::batch 类型,可以直接std::cout
-//        std::cout << batch_ret << std::endl;
-
-        // 使用不具有侵入性的方法,依然可用stl的容器,至于simd指令由xsimd库选择最优的执行.
-        using vector_double = vector_type<double>;
-        using origin_vector = std::vector<double>;
-        origin_vector o_a, o_b, o_ret;
-        vector_double v_a, v_b, v_ret;
-        size_t N = 10000000;
-        v_ret.resize(N); // 注意必须提前 resize vector_ret
-        o_ret.resize(N);
-        for (size_t i = 0; i < N; i++) {
-            o_a.push_back(i);
-            o_b.push_back(i + 1);
-            v_a.push_back(i);
-            v_b.push_back(i + 1);
-        }
-        auto time2 = compute_function_time(mean_, o_a, o_b, o_ret);
-        auto time1 = compute_function_time(mean<double>, v_a, v_b, v_ret);
-        std::cout << time1 << " " << time2 << "\n";
-    }
-
     void test() {
         //init();
         //test_hash_map_performance();
         //test_k_mer_split();
         //test_hash();
-        //test_min_hash();
-        test_simd();
+        test_min_hash();
     }
 }
 #endif //LSH_CPP_TEST_H

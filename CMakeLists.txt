@@ -12,13 +12,14 @@ set(CMAKE_CXX_FLAGS "-Ofast")
 # for debug
 set(CMAKE_CXX_FLAGS_DEBUG "-O0")
 
-# 有关GCC对本地指令集启用和优化的选项见:
-# (-march=native会开启本机所有可行的指令集,比如sse/avx等; -mtune=native会根据这些指令集范围进行优化)
-# https://gcc.gnu.org/onlinedocs/gcc-9.1.0/gcc/x86-Options.html
-# set other compile flags
 set(GCC_COVERAGE_COMPILE_FLAGS "-Wall -Wextra -Wconversion -pedantic -Werror=return-type")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS} -march=native -mtune=native -fopenmp")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${GCC_COVERAGE_COMPILE_FLAGS} -march=native -mtune=native -fopenmp")
+
+# 有关GCC对本地指令集启用和优化的选项见: https://gcc.gnu.org/onlinedocs/gcc-9.1.0/gcc/x86-Options.html
+# (-march=native会开启本机所有可行的指令集,比如sse/avx等; -mtune=native会根据这些指令集范围进行优化)
+# 可以考虑用 -march=native -mtune=native -fopenmp 将全部可用指令集打开;
+# 但如果sse/avx全开可能导致指令混用,性能下降,所以这里仅启用 sse4.2 (前提是本机允许sse4.2指令集)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS} -msse4.2 -fopenmp")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${GCC_COVERAGE_COMPILE_FLAGS} -msse4.2 -fopenmp")
 
 # find boost library
 set(Boost_USE_STATIC_LIBS OFF)

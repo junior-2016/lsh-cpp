@@ -1,6 +1,8 @@
 ## Require
 - G++ (support C++17)
-- simd feature
+- xsimd library \[option\]
+<br>Clone xsimd library [https://github.com/QuantStack/xsimd.git] and then
+install.
 <br>If you want to check whether your cpu support 
 the sse/avx instruction,clone [https://github.com/Mysticial/FeatureDetector.git] 
 and test on your machine.
