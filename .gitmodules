@@ -10,6 +10,3 @@
 [submodule "third-party/xxhash_cpp"]
 	path = third-party/xxhash_cpp
 	url = https://github.com/RedSpah/xxhash_cpp.git
-[submodule "third-party/xsimd"]
-	path = third-party/xsimd
-	url = https://github.com/QuantStack/xsimd.git

@@ -17,8 +17,8 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0")
 # https://gcc.gnu.org/onlinedocs/gcc-9.1.0/gcc/x86-Options.html
 # set other compile flags
 set(GCC_COVERAGE_COMPILE_FLAGS "-Wall -Wextra -Wconversion -pedantic -Werror=return-type")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS} -march=native -mtune=native")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${GCC_COVERAGE_COMPILE_FLAGS} -march=native -mtune=native")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS} -march=native -mtune=native -fopenmp")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${GCC_COVERAGE_COMPILE_FLAGS} -march=native -mtune=native -fopenmp")
 
 # find boost library
 set(Boost_USE_STATIC_LIBS OFF)
@@ -44,7 +44,7 @@ file(GLOB source_files "src/include/*.h" "src/include/*.cpp")
 OPTION(USE_SIMD "use simd or not" ON)
 IF (USE_SIMD)
     ADD_DEFINITIONS(-DUSE_SIMD)
-    include_directories(third-party/xsimd/include/)
+    find_package(xsimd REQUIRED CONFIG) # find xsimd package
 ENDIF (USE_SIMD)
 
 if (Boost_FOUND AND GSL_FOUND)

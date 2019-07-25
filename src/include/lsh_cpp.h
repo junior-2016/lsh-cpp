@@ -33,7 +33,7 @@
 // simd include
 #ifdef USE_SIMD
 
-#include "../../third-party/xsimd/include/xsimd/xsimd.hpp"
+#include <xsimd/xsimd.hpp>
 
 #endif
 
