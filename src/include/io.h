@@ -13,7 +13,8 @@ namespace LSH_CPP {
             typename Element, typename _Alloc = std::allocator<Element>>
     inline void print_sequence_container(const Container<Element, _Alloc> &container) {
         std::cout << "[ ";
-        std::for_each(begin(container), end(container), [](const Element &element) { std::cout << element << " "; });
+        std::for_each(std::begin(container), std::end(container),
+                      [](const Element &element) { std::cout << element << " "; });
         std::cout << "]" << std::endl;
     }
 

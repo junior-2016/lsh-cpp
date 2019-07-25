@@ -30,6 +30,13 @@
 #include <random>
 #include <limits>
 
+// simd include
+#ifdef USE_SIMD
+
+#include "../../third-party/xsimd/include/xsimd/xsimd.hpp"
+
+#endif
+
 // C std include
 #include <cstdint>
 #include <cstdio>

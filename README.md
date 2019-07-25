@@ -1,10 +1,14 @@
 ## Require
-- G++ or Clang++ (support C++17)
+- G++ (support C++17)
+- simd feature
+<br>If you want to check whether your cpu support 
+the sse/avx instruction,clone [https://github.com/Mysticial/FeatureDetector.git] 
+and test on your machine.
 - cmake 
 - Boost
 - anaconda3(python3.7) with numpy and matplotlib installed.
-- GSL(GNU Scientific Library), you can use command 
-'sudo apt-get install libgsl-dev' on Ubuntu to install gsl directly.
+- GSL(GNU Scientific Library) <br>
+ you can use command 'sudo apt-get install libgsl-dev' on Ubuntu to install gsl directly.
 
 ## Build
 
@@ -15,6 +19,7 @@ $ git submodule update --init --recursive
 $ mkdir build
 $ cd build
 $ cmake -DCMAKE_BUILD_TYPE=Release ..
+(use cmake -DUSE_SIMD=OFF to disable simd-feature)
 (use cmake -DCMAKE_BUILD_TYPE=Debug .. to build in debug mode)
 $ make
 ```

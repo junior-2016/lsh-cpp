@@ -4,15 +4,21 @@ project(lsh_cpp)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
+# 有关GCC优化相关的更多选项见:
+# https://stackoverflow.com/questions/14492436/g-optimization-beyond-o3-ofast
+# https://gcc.gnu.org/onlinedocs/gcc-9.1.0/gcc/Optimize-Options.html
 # for release
-set(CMAKE_CXX_FLAGS "-O3")
+set(CMAKE_CXX_FLAGS "-Ofast")
 # for debug
 set(CMAKE_CXX_FLAGS_DEBUG "-O0")
 
-# set coverage compile flags
+# 有关GCC对本地指令集启用和优化的选项见:
+# (-march=native会开启本机所有可行的指令集,比如sse/avx等; -mtune=native会根据这些指令集范围进行优化)
+# https://gcc.gnu.org/onlinedocs/gcc-9.1.0/gcc/x86-Options.html
+# set other compile flags
 set(GCC_COVERAGE_COMPILE_FLAGS "-Wall -Wextra -Wconversion -pedantic -Werror=return-type")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${GCC_COVERAGE_COMPILE_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS} -march=native -mtune=native")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${GCC_COVERAGE_COMPILE_FLAGS} -march=native -mtune=native")
 
 # find boost library
 set(Boost_USE_STATIC_LIBS OFF)
@@ -33,6 +39,13 @@ add_subdirectory(./third-party/abseil-cpp)
 
 # source file path
 file(GLOB source_files "src/include/*.h" "src/include/*.cpp")
+
+# simd control
+OPTION(USE_SIMD "use simd or not" ON)
+IF (USE_SIMD)
+    ADD_DEFINITIONS(-DUSE_SIMD)
+    include_directories(third-party/xsimd/include/)
+ENDIF (USE_SIMD)
 
 if (Boost_FOUND AND GSL_FOUND)
     include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE})
