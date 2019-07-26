@@ -12,7 +12,6 @@
 namespace LSH_CPP {
     constexpr static uint64_t mersenne_prime = (1ull << 61u) - 1u; // 最接近 2^64-1 的梅森素数
     constexpr static size_t max_n_permutation = 256;  // permutation 数量最多256个.
-    // TODO 考虑 static_assert(n_permutation == 128 || n_permutation == 256) 而不是提供一个范围.
 
     /**
      * 生成n个随机hash函数(随机permutation),用于计算 MinHash
@@ -44,20 +43,16 @@ namespace LSH_CPP {
          * (当然你也可以直接用64位最小哈希,并且在空间都是储存的64-bit整数)
          */
 #ifdef USE_SIMD
-        // TODO: 考虑对 aligned/unaligned 控制编译 / 或者引入对齐向量类型和非对齐向量类型.
-        std::vector<uint64_t
-                //, XSIMD_DEFAULT_ALLOCATOR(uint64_t)
-        > vector_a;
+        std::vector<uint64_t, XSIMD_DEFAULT_ALLOCATOR(uint64_t) > vector_a;
 
-        std::vector<uint64_t
-                //,XSIMD_DEFAULT_ALLOCATOR(uint64_t)
-        > vector_b;
+        std::vector<uint64_t, XSIMD_DEFAULT_ALLOCATOR(uint64_t) > vector_b;
 #else
         std::vector<uint64_t> vector_a;
         std::vector<uint64_t> vector_b;
 #endif
 
         explicit RandomHashPermutation() {
+            // TODO 考虑 static_assert(n_permutation == 128 || n_permutation == 256) 而不是提供一个范围.
             static_assert(n_permutation <= max_n_permutation);
             // Seed seed;
             RandomGenerator generator(Seed);
@@ -99,53 +94,34 @@ namespace LSH_CPP {
         static RandomHashPermutation<Seed, RandomGenerator, n_permutation> permutation;
     public:
 #ifdef USE_SIMD
-        std::vector<_hash_value_store_type
-                //, XSIMD_DEFAULT_ALLOCATOR(_hash_value_store_type)
-        > hash_values;
+        std::vector<_hash_value_store_type, XSIMD_DEFAULT_ALLOCATOR(_hash_value_store_type) > hash_values;
 #else
         std::vector<_hash_value_store_type> hash_values;
 #endif
 
         explicit MinHash(HashFunc &&hash_func) : hash_func(hash_func) {
-            static_assert((MinHashBits == 32 || MinHashBits == 64) && n_permutation <= max_n_permutation);
+            static_assert((MinHashBits == 32 || MinHashBits == 64));
+            // TODO 考虑 static_assert(n_permutation == 128 || n_permutation == 256) 而不是提供一个范围.
+            static_assert(n_permutation <= max_n_permutation);
             hash_values.resize(n_permutation, _max_hash_range);
         }
 
         void update(const std::vector<std::string_view> &data) {
             auto values = hash_func(data);
             for (const auto &value:values) {
-//                std::vector<uint64_t> result;
-//                result.resize(n_permutation);
-//                __simd__<xsimd::unaligned_mode, n_permutation>
-//                        (permutation.vector_a, permutation.vector_b, result,
-//                         [&](const xsimd::simd_type<uint64_t> &a,
-//                             const xsimd::simd_type<uint64_t> &b) {
-//                             return ((a * value + b) % mersenne_prime) & _max_hash_range;
-//                         },
-//                         [&](const uint64_t &a, const uint64_t &b) {
-//                             return ((a * value + b) % mersenne_prime) & _max_hash_range;
-//                         });
-//                __simd__<xsimd::unaligned_mode, n_permutation>
-//                        (result, hash_values, hash_values,
-//                         [&](const xsimd::simd_type<uint64_t> &a,
-//                             const xsimd::simd_type<uint64_t> &b) {
-//                             return xsimd::min(a, b);
-//                         }, [&](const uint64_t &a, const uint64_t &b) {
-//                             return std::min(a, b);
-//                         });
-
 #ifdef USE_SIMD
                 // 1. 使用组合式的simd函数,这样就不需要额外创建一个result的开销了;
                 // 2. 这里假设了你的容器元素数量恰好可以被完全simd化,不会留下多余的部分,也就不需要额外提供处理函数,
                 //    如果不能满足这一点,调用__simd_combine_fast__在编译期就会察觉,编译也无法通过.
                 // 3. 对齐后的数据进行simd计算会更快些
-                __simd_combine_fast__<xsimd::unaligned_mode, n_permutation>
+                __simd_combine_fast__<xsimd::aligned_mode, n_permutation>
                         (permutation.vector_a, permutation.vector_b, hash_values, hash_values,
                          [&](const xsimd::simd_type<uint64_t> &a,
                              const xsimd::simd_type<uint64_t> &b,
                              const xsimd::simd_type<uint64_t> &c) {
                              return xsimd::min(((a * value + b) % mersenne_prime) & _max_hash_range, c);
                          });
+
 #else
                 for (size_t i = 0; i < n_permutation; i++) {
                     hash_values[i] = std::min(hash_values[i],
@@ -158,12 +134,21 @@ namespace LSH_CPP {
 
         void update(std::string_view string) {
             auto value = hash_func(string);
-            // TODO 考虑sse/avx向量优化
+#ifdef USE_SIMD
+            __simd_combine_fast__<xsimd::aligned_mode, n_permutation>
+                    (permutation.vector_a, permutation.vector_b, hash_values, hash_values,
+                     [&](const xsimd::simd_type<uint64_t> &a,
+                         const xsimd::simd_type<uint64_t> &b,
+                         const xsimd::simd_type<uint64_t> &c) {
+                         return xsimd::min(((a * value + b) % mersenne_prime) & _max_hash_range, c);
+                     });
+#else
             for (size_t i = 0; i < n_permutation; i++) {
                 uint64_t ret = ((value * permutation.vector_a[i] + permutation.vector_b[i]) % mersenne_prime) &
                                _max_hash_range;
                 hash_values[i] = std::min(hash_values[i], ret);
             }
+#endif
         }
 
         [[nodiscard]] inline size_t length() const {

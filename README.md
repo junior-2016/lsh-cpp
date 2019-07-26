@@ -21,7 +21,7 @@ $ git submodule update --init --recursive
 $ mkdir build
 $ cd build
 $ cmake -DCMAKE_BUILD_TYPE=Release ..
-(use cmake -DUSE_SIMD=OFF to disable simd-feature)
+(use cmake -DUSE_SIMD=ON to enable simd-feature)
 (use cmake -DCMAKE_BUILD_TYPE=Debug .. to build in debug mode)
 $ make
 ```

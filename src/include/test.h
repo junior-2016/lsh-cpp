@@ -74,9 +74,9 @@ namespace LSH_CPP::Test {
         using std_hash_map = std::unordered_map<uint64_t, std::string>;
         using parallel_hash_map = phmap::flat_hash_map<uint64_t, std::string>;
         printf("std::unordered_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert<std_hash_map>));
+               compute_function_time(hash_map_create_and_insert < std_hash_map > ));
         printf("phmap::flat_hash_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert<parallel_hash_map>));
+               compute_function_time(hash_map_create_and_insert < parallel_hash_map > ));
     }
 
     void test_hash() {
@@ -104,7 +104,7 @@ namespace LSH_CPP::Test {
         std::vector<std::string_view> data2 = {"minhash", "is", "a", "probability", "data", "structure", "for",
                                                "estimating", "the", "similarity", "between", "documents"};
         std::string s;
-        size_t k = 1000;
+        size_t k = 12;
         for (int i = 0; i < 100000; i++) {
             s += "abcdefghijklmnopqrstuvwxyz";
         }

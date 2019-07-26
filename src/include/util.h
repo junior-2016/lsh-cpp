@@ -145,16 +145,6 @@ namespace LSH_CPP {
     }
 
 #ifdef USE_SIMD
-    // TODO: 考虑用 xsimd::transform + xsimd::batch 重构下面的函数,或许更优:
-    /**
-     * example 来自 github.
-     * void mean(const vector_type& a, const vector_type& b, vector_type& res)
-     * {
-     *         xsimd::transform(a.begin(), a.end(), b.begin(), res.begin(),
-     *                [](const auto& x, const auto& y) { (x + y) / 2.; });
-     * }
-     */
-
     template<typename Tag,     // 选择 simd::aligned_mode 还是 std::unaligned_mode
             size_t size,       // 容器数量编译器确定
             typename SimdFunc, // 用于simd处理的函数
