@@ -1,16 +1,16 @@
 ## Require
-- G++ (support C++17)
+- g++ 8.3.0 / clang++ 8.0.1 (support C++17)
 - xsimd library \[option\]
 <br>Clone xsimd library [https://github.com/QuantStack/xsimd.git] and then
 install.
 <br>If you want to check whether your cpu support 
 the sse/avx instruction,clone [https://github.com/Mysticial/FeatureDetector.git] 
 and test on your machine.
-- cmake 
+- cmake 3.12
 - Boost
 - anaconda3(python3.7) with numpy and matplotlib installed.
 - GSL(GNU Scientific Library) <br>
- you can use command 'sudo apt-get install libgsl-dev' on Ubuntu to install gsl directly.
+ You can use command 'sudo apt-get install libgsl-dev' on Ubuntu to install gsl directly.
 
 ## Build
 

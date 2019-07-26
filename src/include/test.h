@@ -9,6 +9,7 @@
 #include "util.h"
 #include "io.h"
 #include "minhash.h"
+#include "lsh.h"
 
 namespace LSH_CPP::Test {
     using double_second = std::chrono::duration<double>;
@@ -121,12 +122,46 @@ namespace LSH_CPP::Test {
         printf("similarity: %.8f ; update-time : %.8f seconds ; similarity-time %.8f \n", ret, time, time_2);
     }
 
+    void test_int_stream_hash() {
+        std::vector<uint64_t> integers = {1, 2, 3, 4};
+        auto size = integers.size();
+        printf("%lu %lu %lu %lu\n",
+               int_stream_hash<XXUInt64StreamHash64>(integers, {0, size}),
+               int_stream_hash<XXUInt64StreamHash64>(integers, {1, size}),
+               int_stream_hash<XXUInt64StreamHash64>(integers, {2, size}),
+               int_stream_hash<XXUInt64StreamHash64>(integers, {3, size})
+        );
+    }
+
+    void test_lsh_minhash() {
+        std::vector<std::string_view> data_1 = {"minhash", "is", "a", "probabilistic", "data", "structure", "for",
+                                                "estimating", "the", "similarity", "between", "datasets"};
+        std::vector<std::string_view> data_2 = {"minhash", "is", "a", "probability", "data", "structure", "for",
+                                                "estimating", "the", "similarity", "between", "documents"};
+        std::vector<std::string_view> data_3 = {"minhash", "is", "probability", "data", "structure", "for",
+                                                "estimating", "the", "similarity", "between", "documents"};
+        MinHash m1(XXStringHash64{}), m2(XXStringHash64{}), m3(XXStringHash64{});
+        m1.update(data_1);
+        m2.update(data_2);
+        m3.update(data_3);
+        LSH<XXUInt64StreamHash64, std::string_view, 25, 5, 128> lsh(0.6);
+        lsh.insert(m2, "m2");
+        lsh.insert(m3, "m3");
+        auto ret = lsh.query(m1);
+        std::cout << "query result:\n";
+        for (const auto &item:ret) {
+            std::cout << item << " ";
+        }
+    }
+
     void test() {
         //init();
         //test_hash_map_performance();
         //test_k_mer_split();
         //test_hash();
-        test_min_hash();
+        //test_min_hash();
+        //test_int_stream_hash();
+        test_lsh_minhash();
     }
 }
 #endif //LSH_CPP_TEST_H

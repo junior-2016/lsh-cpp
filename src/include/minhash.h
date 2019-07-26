@@ -78,15 +78,18 @@ namespace LSH_CPP {
      * xxHash 比 phmap::Hash,std::hash 快一倍.
      * 4. 虽然absl::Hash最优,但是由于absl::Hash的不确定性,默认还是使用 xxHash 作为字符串的哈希函数.
      */
-    template<typename HashFunc,
-            size_t MinHashBits = 32,
-            size_t n_permutation = 128,
-            size_t Seed = 0,
+    template<typename HashFunc,       // 将数据集合的元素(主要字符串类型,但也可以是其他类型)映射到整数的哈希函数
+            size_t MinHashBits = 32,  // 最小哈希值的实际位数(可以是32bit或64bit,但内部储存最小哈希统一用uint64_t)
+            size_t n_permutation = 128, // RandomHashPermutation中随机哈希函数的个数
+            size_t Seed = 0,            // RandomHashPermutation中随机数生成器的种子
             //typename Seed = std::random_device,
-            typename RandomGenerator = std::mt19937_64>
+            typename RandomGenerator = std::mt19937_64 // RandomHashPermutation中的随机数生成器,默认用std::mt19937_64.
+    >
     class MinHash {
     public:
-        using _hash_value_store_type = uint64_t; // min_hash value 的储存类型为uint64_t
+        // min_hash value 的储存类型为uint64_t
+        using _hash_value_store_type = uint64_t;
+
         // min_hash 的实际类型取决于MinHashBits,所以这里的哈希值最大值也是由MinHashBits决定
         const uint64_t _max_hash_range = HashValueType<MinHashBits>::max_hash_range;
     private:

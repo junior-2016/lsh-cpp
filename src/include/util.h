@@ -101,6 +101,22 @@ namespace LSH_CPP {
         }
     };
 
+    template<>
+    struct xx_Hash<uint64_t> {
+        // 下面的接口只适用于对整一个vector做哈希.
+        // 如果要哈希vector的某个部分,应该拿: auto data_pointer = vector.data()+bias; auto size = interval;
+        // 然后调用下面的 row-pointer with size 的接口.
+        inline uint64_t operator()(const std::vector<uint64_t> &int_stream) {
+            return xxh::xxhash<64>(int_stream); // this->operator()(int_stream.data(),int_stream.size());
+        }
+
+        // row-pointer with size
+        inline uint64_t operator()(const uint64_t *int_stream, size_t size) {
+            return xxh::xxhash<64>(int_stream, size);
+        }
+    };
+
+    // string hash function
     using XXStringHash64 = hash<xx_Hash, std::string_view, 64>;
     using XXStringHash32 = hash<xx_Hash, std::string_view, 32>;
     using DefaultStringHash64 = hash<std::hash, std::string_view, 64>;
@@ -108,6 +124,18 @@ namespace LSH_CPP {
     using AbslStringHash64 = hash<absl::Hash, std::string_view, 64>;
     using AbslStringHash32 = hash<absl::Hash, std::string_view, 32>;
 
+    // integer hash function
+    using XXUInt64StreamHash64 = xx_Hash<uint64_t>;
+
+    // integer stream hash vector<uint64_t> between [start,end)
+    // usage case: auto ret = int_stream_hash<XXUInt64StreamHash64>( /* int_stream */{1,2,3,4}, /* range */{ 0, 4 })
+    template<typename Hash>
+    inline uint64_t int_stream_hash(const std::vector<uint64_t> &int_stream, const std::pair<size_t, size_t> &range) {
+        auto[start, end] = range;
+        // assert will omit on release build mode.
+        assert(start >= 0 && start < int_stream.size() && end > start && end <= int_stream.size());
+        return Hash{}(int_stream.data() + start, end - start);
+    }
 
     /**
      *
