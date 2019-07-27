@@ -106,35 +106,35 @@ namespace LSH_CPP {
 
     };
 
-    template<typename T, typename Trait>
-    struct xx_Hash<std::basic_string_view<T, Trait>> {
-        inline uint64_t operator()(const std::basic_string_view<T, Trait> &stringView) {
+    template<typename T>
+    struct xx_Hash<std::basic_string_view<T>> {
+        inline uint64_t operator()(const std::basic_string_view<T> &stringView) {
             return xxh::xxhash<64>(stringView);
         }
 
-        inline uint64_t operator()(const std::vector<std::basic_string_view<T, Trait>> &stringViews) {
+        inline uint64_t operator()(const std::vector<std::basic_string_view<T>> &stringViews) {
             // TODO: 空实现. 后面再补充,因为这里vector里面储存的是 string_view,并不是基本的数据类型比如int/char/double,
             //  所以不能直接传递整个vector
             return 0;
         }
 
-        inline uint64_t operator()(const std::vector<std::basic_string_view<T, Trait>> &string_view,
+        inline uint64_t operator()(const std::vector<std::basic_string_view<T>> &string_view,
                                    const std::pair<size_t, size_t> &range) {
             return 0;
         }
     };
 
-    template<typename T, typename Trait, typename Alloc>
-    struct xx_Hash<std::basic_string<T, Trait, Alloc>> {
-        inline uint64_t operator()(const std::basic_string<T, Trait, Alloc> &string) {
+    template<typename T>
+    struct xx_Hash<std::basic_string<T>> {
+        inline uint64_t operator()(const std::basic_string<T> &string) {
             return xxh::xxhash<64>(string);
         }
 
-        inline uint64_t operator()(const std::vector<std::basic_string<T, Trait, Alloc>> &strings) {
+        inline uint64_t operator()(const std::vector<std::basic_string<T>> &strings) {
             return 0; // TODO: 空实现
         }
 
-        inline uint64_t operator()(const std::vector<std::basic_string<T, Trait, Alloc>> &strings,
+        inline uint64_t operator()(const std::vector<std::basic_string<T>> &strings,
                                    const std::pair<size_t, size_t> &range) {
             return 0;
         }

@@ -93,6 +93,7 @@ namespace LSH_CPP::Test {
                 {"hello", "hello", "you", "me", "my", "you", "please", "hello"};
         std::vector<std::string> string_array =
                 {"hello", "hello", "you", "me", "my", "you", "please", "hello"};
+        std::cout << "hello : " << XXStringViewHash64{}("hello") << "\n";
         print_sequence_container(element_wise_hash(XXStringViewHash64{}, string_view_array));
         print_sequence_container(element_wise_hash(XXStringHash64{}, string_array));
     }
@@ -166,7 +167,7 @@ namespace LSH_CPP::Test {
         //init();
         //test_hash_map_performance();
         //test_k_mer_split();
-        //test_hash();
+        test_hash();
         //test_min_hash();
         test_lsh_minhash();
     }
