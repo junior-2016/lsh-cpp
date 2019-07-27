@@ -8,10 +8,11 @@
 #include "lsh_cpp.h"
 #include "util.h"
 #include "io.h"
+#include "hash.h"
 
 namespace LSH_CPP {
-    constexpr static uint64_t mersenne_prime = (1ull << 61u) - 1u; // 最接近 2^64-1 的梅森素数
-    constexpr static size_t max_n_permutation = 256;  // permutation 数量最多256个.
+    constexpr static size_t max_n_permutation = 1024;  // permutation 最大数量.
+    constexpr static size_t mersenne_prime = mersenne_prime_for_generate_64_hash;
 
     /**
      * 生成n个随机hash函数(随机permutation),用于计算 MinHash
@@ -80,7 +81,7 @@ namespace LSH_CPP {
      */
     template<typename HashFunc,       // 将数据集合的元素(主要字符串类型,但也可以是其他类型)映射到整数的哈希函数
             size_t MinHashBits = 32,  // 最小哈希值的实际位数(可以是32bit或64bit,但内部储存最小哈希统一用uint64_t)
-            size_t n_permutation = 128, // RandomHashPermutation中随机哈希函数的个数
+            size_t n_permutation = 512, // RandomHashPermutation中随机哈希函数的个数
             size_t Seed = 0,            // RandomHashPermutation中随机数生成器的种子
             //typename Seed = std::random_device,
             typename RandomGenerator = std::mt19937_64 // RandomHashPermutation中的随机数生成器,默认用std::mt19937_64.
@@ -110,7 +111,7 @@ namespace LSH_CPP {
         }
 
         void update(const std::vector<std::string_view> &data) {
-            auto values = hash_func(data);
+            auto values = element_wise_hash(hash_func, data);
             for (const auto &value:values) {
 #ifdef USE_SIMD
                 // 1. 使用组合式的simd函数,这样就不需要额外创建一个result的开销了;
@@ -159,13 +160,15 @@ namespace LSH_CPP {
         }
     };
 
+    // 下面的 jaccard_similarity 计算公式是通过 min_hash_value_vector 估计得到的,
+    // 只是从概率上和真实的jaccard_similarity相等,但真实的jaccard_similarity值和这个还是有偏差的
     template<typename H,
             size_t _min_hash_bits,
             size_t _n_permutation,
             size_t _Seed,
             //typename _Seed,
             typename _RandomGenerator>
-    static double jaccard_similarity
+    static double estimated_jaccard_similarity
             (const MinHash<H, _min_hash_bits, _n_permutation, _Seed, _RandomGenerator> &A,
              const MinHash<H, _min_hash_bits, _n_permutation, _Seed, _RandomGenerator> &B) {
         size_t count = 0;
@@ -174,6 +177,29 @@ namespace LSH_CPP {
             if (A.hash_values[i] == B.hash_values[i]) count++;
         }
         return (double) count / (double) _n_permutation;
+    }
+
+    // 计算真实的 jaccard_similarity = (A intersection B) / (A union B)
+    double actual_jaccard_similarity(const phmap::flat_hash_set<std::string_view> &A,
+                                     const phmap::flat_hash_set<std::string_view> &B) {
+        // fast compute A_set intersection B && A_set union B
+        return 0;
+    }
+
+    template<typename H,
+            size_t _min_hash_bits,
+            size_t _n_permutation,
+            size_t _Seed,
+            //typename _Seed,
+            typename _RandomGenerator>
+    static void print_minhash_table(
+            const MinHash<H, _min_hash_bits, _n_permutation, _Seed, _RandomGenerator> &m1,
+            const MinHash<H, _min_hash_bits, _n_permutation, _Seed, _RandomGenerator> &m2) {
+        printf("\t M_1 \t M_2 \t Eq? \n");
+        for (size_t i = 0; i < _n_permutation; i++) {
+            printf("\t %ul \t %ul \t %d \n", m1.hash_values[i], m2.hash_values[i],
+                   (m1.hash_values[i] == m2.hash_values[i]));
+        }
     }
 
     template<typename HashFunc,

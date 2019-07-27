@@ -9,25 +9,31 @@
 
 namespace LSH_CPP {
     /**
-     * Non-capture lambda can be transfer to function pointer directly.
+     * Non-capture lambda can be transfer to function pointer directly,
+     * so the first argument can be a non-capture function with <double (*)(double, void *)> signature.
      * @tparam Func lambda expression type : [](double,void*)->double{...}
      * @param f : integration function for gsl_function
      * @param range : integration interval from range.first to range.second
      * @param params : parameters array for gsl_function
-     * gsl integration api:
-     * int gsl_integration_qags (const gsl_function * f, double a, double b, double epsabs,
-     * double epsrel, size_t limit, gsl_integration_workspace * workspace,
-     * double * result, double * abserr)
+     * GSL quad数值积分计算接口:
+     * gsl_integration_cquad(const gsl_function * f, double a, double b, double epsabs, double epsrel,
+     * gsl_integration_cquad_workspace * workspace, double * result, double * abserr, size_t * nevals)
+     * 最后两个参数可以设置成null(不需要计算误差的时候)
+     * 这里主要有几个参数可以调整: work_space_alloc_n , epsrel , epsabs,但主要是前面两个.
+     * 我初始的设置是 work_space_alloc_n = 1000 && epsrel = 1e-7 && epsabs = 0,虽然精度不错但耗时太长,应该减少一定精度.
+     * 最后设置为 work_space_alloc_n = 500 && epsrel = 1e-4, 积分耗时减少.
+     * (积分计算耗时其实问题不大,因为LSH只在初始化的时候会优化参数,积分计算最多执行一次)
      */
     template<typename Func>
     double numerical_integration(Func &&f, std::pair<double, double> range, double *params) {
-        gsl_integration_workspace *w = gsl_integration_workspace_alloc(1000);
-        double result, error;
+        gsl_integration_cquad_workspace *w = gsl_integration_cquad_workspace_alloc(500);
+        double result;
         gsl_function F;
         F.function = static_cast<double (*)(double, void *)> (f);
         F.params = reinterpret_cast<void *>(params);
-        gsl_integration_qags(&F, range.first, range.second, 0, 1e-7, 1000, w, &result, &error);
-        gsl_integration_workspace_free(w);
+        gsl_integration_cquad(&F, range.first, range.second, 0, 1e-4, w,
+                              &result, nullptr, nullptr);
+        gsl_integration_cquad_workspace_free(w);
         return result;
     }
 
@@ -41,100 +47,6 @@ namespace LSH_CPP {
         auto *parameter = reinterpret_cast<double *>(param);
         double b = parameter[0], r = parameter[1];
         return 1.0 - pow(1.0 - pow(x, r), b); // ∫ (0.0 -> threshold) 1 - (1 - s^r)^b
-    }
-
-    template<size_t N>
-    struct HashValueType {
-    };
-    template<>
-    struct HashValueType<32> {
-        using type = uint32_t;
-        static constexpr uint64_t max_hash_range = std::numeric_limits<uint32_t>::max(); // 0x00000000FFFFFFFF
-    };
-    template<>
-    struct HashValueType<64> {
-        using type  = uint64_t;
-        static constexpr uint64_t max_hash_range = std::numeric_limits<uint64_t>::max(); // 0xFFFFFFFFFFFFFFFF
-    };
-
-    template<template<typename/* KeyType */ > typename Hash, typename KeyType, size_t Bits = 64>
-    struct hash {
-        static inline typename HashValueType<Bits>::type __hash(const KeyType &key) {
-            static_assert(Bits == 32 || Bits == 64);
-            return Hash<KeyType>{}(key);
-        }
-
-        inline typename HashValueType<Bits>::type operator()(const KeyType &key) {
-            static_assert(Bits == 32 || Bits == 64);
-            return __hash(key);
-        }
-
-        inline std::vector<typename HashValueType<Bits>::type> operator()(const std::vector<KeyType> &array) {
-            static_assert(Bits == 32 || Bits == 64);
-            std::vector<typename HashValueType<Bits>::type> ret(array.size());
-            for (size_t i = 0; i < array.size(); i++) {
-                ret[i] = __hash(array[i]);
-            }
-            return ret;
-        }
-    };
-
-    template<typename T>
-    struct xx_Hash {
-
-    };
-
-    // wrap xx_hash library to LSH_CPP::xx_Hash. only implement for string_view and string.
-    // use xxh::hash64_t(actual type is uint64_t) as hash type
-    // (because xxh::hash64_t is faster than xxh::hash32_t on x86_64)
-    template<>
-    struct xx_Hash<std::string_view> {
-        inline uint64_t operator()(std::string_view stringView) {
-            return xxh::xxhash<64>(stringView.data(), stringView.size());
-        }
-    };
-
-    template<>
-    struct xx_Hash<std::string> {
-        inline uint64_t operator()(const std::string &string) {
-            return xxh::xxhash<64>(string);
-        }
-    };
-
-    template<>
-    struct xx_Hash<uint64_t> {
-        // 下面的接口只适用于对整一个vector做哈希.
-        // 如果要哈希vector的某个部分,应该拿: auto data_pointer = vector.data()+bias; auto size = interval;
-        // 然后调用下面的 row-pointer with size 的接口.
-        inline uint64_t operator()(const std::vector<uint64_t> &int_stream) {
-            return xxh::xxhash<64>(int_stream); // this->operator()(int_stream.data(),int_stream.size());
-        }
-
-        // row-pointer with size
-        inline uint64_t operator()(const uint64_t *int_stream, size_t size) {
-            return xxh::xxhash<64>(int_stream, size);
-        }
-    };
-
-    // string hash function
-    using XXStringHash64 = hash<xx_Hash, std::string_view, 64>;
-    using XXStringHash32 = hash<xx_Hash, std::string_view, 32>;
-    using DefaultStringHash64 = hash<std::hash, std::string_view, 64>;
-    using DefaultStringHash32 = hash<std::hash, std::string_view, 32>;
-    using AbslStringHash64 = hash<absl::Hash, std::string_view, 64>;
-    using AbslStringHash32 = hash<absl::Hash, std::string_view, 32>;
-
-    // integer hash function
-    using XXUInt64StreamHash64 = xx_Hash<uint64_t>;
-
-    // integer stream hash vector<uint64_t> between [start,end)
-    // usage case: auto ret = int_stream_hash<XXUInt64StreamHash64>( /* int_stream */{1,2,3,4}, /* range */{ 0, 4 })
-    template<typename Hash>
-    inline uint64_t int_stream_hash(const std::vector<uint64_t> &int_stream, const std::pair<size_t, size_t> &range) {
-        auto[start, end] = range;
-        // assert will omit on release build mode.
-        assert(start >= 0 && start < int_stream.size() && end > start && end <= int_stream.size());
-        return Hash{}(int_stream.data() + start, end - start);
     }
 
     /**
@@ -160,8 +72,7 @@ namespace LSH_CPP {
      * 因此在使用string_view时要格外小心源字符串的生命周期
      */
     // 更快的k_mer_split,但是需要考虑源字符串的生命周期.
-    // 使用std::string_view做参数不需要引用,因为开销已经足够小,加不加引用没有区别
-    std::vector<std::string_view> split_k_mer_fast(std::string_view string, size_t k) {
+    std::vector<std::string_view> split_k_mer_fast(const std::string_view &string, size_t k) {
         if (k >= string.size()) { return {string}; }
         size_t N = string.size() - k + 1;
         std::vector<std::string_view> result;
@@ -171,6 +82,14 @@ namespace LSH_CPP {
         }
         return result;
     }
+
+//    struct K_mer {
+//        const std::string origin_string;
+//        std::vector<std::string_view> sub_strings;
+//
+//        K_mer(std::string origin_string, std::vector<std::string_view> sub_strings) :
+//                origin_string(std::move(origin_string)), sub_strings(std::move(sub_strings)) {}
+//    };
 
 #ifdef USE_SIMD
     template<typename Tag,     // 选择 simd::aligned_mode 还是 std::unaligned_mode
@@ -235,14 +154,5 @@ namespace LSH_CPP {
         }
     }
 #endif
-
-    // 废弃使用 K_mer
-//    struct K_mer {
-//        const std::string origin_string;
-//        std::vector<std::string_view> sub_strings;
-//
-//        K_mer(std::string origin_string, std::vector<std::string_view> sub_strings) :
-//                origin_string(std::move(origin_string)), sub_strings(std::move(sub_strings)) {}
-//    };
 }
 #endif //LSH_CPP_UTIL_H

@@ -42,3 +42,16 @@ $ cd ~/anaconda3/lib/
 $ rm -rf libstdc++.so.6
 $ ln -s libstdc++.so.6.0.26 libstdc++.so.6
 ```
+
+## TODO
+- [ ] LSH_CPP implementation
+    - [ ] LSH benchmark test
+    - [ ] LSH Forest impl
+    - [ ] LSH ensemble impl
+    - [ ] Weight MinHash impl
+    - [ ] HyperLog / HyperLog++ impl
+
+- [ ] LSH_CPP Large-scale data support
+    - [ ] Map reduce compute
+    - [ ] data persistence (redis storage) 
+    - [ ] data save/read/remove/split/merge/... feature

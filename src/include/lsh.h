@@ -8,6 +8,7 @@
 #include "lsh_cpp.h"
 #include "minhash.h"
 #include "util.h"
+#include "hash.h"
 
 namespace LSH_CPP {
     /**
@@ -23,11 +24,11 @@ namespace LSH_CPP {
      * @tparam n_permutation
      */
     template<
-            typename BandHashFunc = XXUInt64StreamHash64,
+            typename BandHashFunc = XXUInt64Hash64,
             typename MinHashLabel = std::string_view,
             size_t b = 0,
             size_t r = 0,
-            size_t n_permutation = 128
+            size_t n_permutation = 512
     >
     class LSH {
     public:
@@ -40,16 +41,21 @@ namespace LSH_CPP {
 
         using BandHashMap = phmap::flat_hash_map<BandHashKeyType, BandHashValueType>;
 
+        using false_positive_weight = double;
+        using false_negative_weight = double;
+
     private:
         std::pair<size_t, size_t> params = {0, 0}; // { b, r }
         std::vector<BandHashMap> band_hash_maps;                // 每一个Band持有的哈希表集合
         std::vector<std::pair<size_t, size_t>> band_hash_range; // BandHashFunc对min_hash_vector哈希的操作范围集合
+        BandHashFunc bandHashFunc;
 
         // TODO: 引入 std::vector<MinHashLabel> data_set; 来检查有没有重复插入同一个data,但感觉不是特别必要...
         //      std::vector<MinHashLabel> data_set;
 
-        std::pair<size_t, size_t> optimal_params(double threshold, const std::pair<double, double> &weights) {
-            auto[false_positive_weight, false_negative_weight] = weights; // C++17 特性
+        std::pair<size_t, size_t>
+        optimal_params(double threshold, const std::pair<false_positive_weight, false_negative_weight> &weights) {
+            auto[false_positive_weight, false_negative_weight] = weights; // C++17 特性: auto[a,b] = std::pair<A,B>{a_val,b_val};
             double temp_params[2];
             double min_error = std::numeric_limits<double>::max();
             std::pair<size_t, size_t> ret;
@@ -78,8 +84,11 @@ namespace LSH_CPP {
          * @param params = { b , r }
          * @param threshold: Jaccard similarity threshold. 0.0 <= threshold <= 1.0
          * @param weights: { false_positive_weight, false_negative_weight }. weights.first + weights.second = 1.0.
+         * 比重给的越大,代表越希望减少这个方面的误差,比如极限情况下设置 { 0,1 }
+         * 此时仅保留false_negative_weight,然后调用optimal_params(..)不断以减少false_negative_error去优化参数.
          */
-        explicit LSH(double threshold = 0.9, std::pair<double, double> weights = {0.5, 0.5}) {
+        explicit LSH(double threshold = 0.9,
+                     std::pair<false_positive_weight, false_negative_weight> weights = {0.5, 0.5}) {
             static_assert(n_permutation <= max_n_permutation);
             assert(threshold >= 0 && threshold <= 1.0);
             assert(weights.first >= 0 && weights.second >= 0 && weights.first + weights.second == 1);
@@ -105,7 +114,7 @@ namespace LSH_CPP {
                     const MinHashLabel &label) {
             // TODO: 检查 label 代表的数据是不是重复插入
             for (size_t i = 0; i < band_hash_maps.size(); i++) {
-                auto key = int_stream_hash<BandHashFunc>(min_hash.hash_values, band_hash_range[i]);
+                auto key = bandHashFunc(min_hash.hash_values, band_hash_range[i]);
                 if (auto pos = band_hash_maps[i].find(key); pos == band_hash_maps[i].end()) { // c++17 if (init;cond)
                     band_hash_maps[i].insert({key, {label}});
                 } else {
@@ -121,7 +130,7 @@ namespace LSH_CPP {
             // TODO: 检查 label 代表的数据是不是重复插入
             std::vector<MinHashLabel> candidate_set;
             for (size_t i = 0; i < band_hash_maps.size(); i++) {
-                auto key = int_stream_hash<BandHashFunc>(min_hash.hash_values, band_hash_range[i]);
+                auto key = bandHashFunc(min_hash.hash_values, band_hash_range[i]);
                 if (auto pos = band_hash_maps[i].find(key); pos != band_hash_maps[i].end()) {
                     for (const auto &item : (*pos).second) {
                         candidate_set.insert(item);
@@ -139,7 +148,7 @@ namespace LSH_CPP {
         query(const MinHash <HashFunc, MinHashBits, n_permutation, Seed, RandomGenerator> &min_hash) {
             phmap::flat_hash_set<MinHashLabel> candidate_set;
             for (size_t i = 0; i < band_hash_maps.size(); i++) {
-                auto key = int_stream_hash<BandHashFunc>(min_hash.hash_values, band_hash_range[i]);
+                auto key = bandHashFunc(min_hash.hash_values, band_hash_range[i]);
                 if (auto pos = band_hash_maps[i].find(key); pos != band_hash_maps[i].end()) {
                     for (const auto &item : (*pos).second) {
                         candidate_set.insert(item);
@@ -150,8 +159,8 @@ namespace LSH_CPP {
         }
 
         void print_config() {
-            std::cout << "params : b = " << params.first << " r = " << params.second << "\n";
-
+            std::cout << "===============  LSH config  ===============\n";
+            std::cout << "params : b = " << params.first << "  r = " << params.second << "\n";
         }
     };
 }
