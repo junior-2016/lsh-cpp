@@ -39,20 +39,34 @@ set(PYTHON_LIBRARIES "$ENV{HOME}/anaconda3/lib/libpython3.7m.so")
 add_subdirectory(./third-party/abseil-cpp)
 
 # source file path
-file(GLOB source_files "src/include/*.h" "src/include/*.cpp")
+set(SELF_INCLUDE src/include/)
+file(GLOB Test_file "src/test/*.cpp" "src/test/*.h")
+file(GLOB Benchmark_file "src/benchmark/*.h" "src/benchmark/*.cpp")
 
-# simd control (default disable simd)
 OPTION(USE_SIMD "use simd or not" OFF)
+OPTION(TEST "build test" ON)
+OPTION(BENCHMARK "build benchmark" OFF)
+set(TEST ON)
+set(BENCHMARK ON)
 set(USE_SIMD OFF)
+
 IF (USE_SIMD)
     ADD_DEFINITIONS(-DUSE_SIMD)
     find_package(xsimd REQUIRED CONFIG) # find xsimd package
 ENDIF (USE_SIMD)
 
 if (Boost_FOUND AND GSL_FOUND)
-    include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE})
-    add_executable(lsh_cpp src/main.cpp ${source_files})
-    target_include_directories(lsh_cpp PRIVATE ${PYTHON_INCLUDE_PATH})
-    target_link_libraries(lsh_cpp absl::hash ${Boost_LIBRARIES} ${PYTHON_LIBRARIES}
-            GSL::gsl GSL::gslcblas)
+    include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE} ${SELF_INCLUDE})
+    if (TEST)
+        add_executable(lsh_cpp_test ${Test_file})
+        target_include_directories(lsh_cpp_test PRIVATE ${PYTHON_INCLUDE_PATH})
+        target_link_libraries(lsh_cpp_test absl::hash ${Boost_LIBRARIES} ${PYTHON_LIBRARIES}
+                GSL::gsl GSL::gslcblas)
+    ENDIF ()
+    if (BENCHMARK)
+        add_executable(lsh_cpp_benchmark ${Benchmark_file})
+        target_include_directories(lsh_cpp_benchmark PRIVATE ${PYTHON_INCLUDE_PATH})
+        target_link_libraries(lsh_cpp_benchmark absl::hash ${Boost_LIBRARIES} ${PYTHON_LIBRARIES}
+                GSL::gsl GSL::gslcblas)
+    ENDIF ()
 endif ()

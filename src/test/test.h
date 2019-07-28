@@ -5,12 +5,12 @@
 #ifndef LSH_CPP_TEST_H
 #define LSH_CPP_TEST_H
 
-#include "lsh_cpp.h"
-#include "util.h"
-#include "io.h"
-#include "hash.h"
-#include "minhash.h"
-#include "lsh.h"
+#include "../include/lsh_cpp.h"
+#include "../include/util.h"
+#include "../include/io.h"
+#include "../include/hash.h"
+#include "../include/minhash.h"
+#include "../include/lsh.h"
 
 namespace LSH_CPP::Test {
     using double_second = std::chrono::duration<double>;
@@ -66,7 +66,8 @@ namespace LSH_CPP::Test {
         for (int i = 0; i < 1000000; i++) {
             s += "abcdefghijklmnopqrstuvwxyz";
         }
-        auto ret = compute_function_time<std::vector<std::string_view >>(split_k_mer_fast, s, k);
+        auto ret = compute_function_time<std::vector<std::string_view >>
+                (split_k_mer_fast, s, k);
         printf("split_k_mer_fast: %.8f seconds\n", ret.second);
         // printf("create k_mer time %.8f seconds\n", compute_function_time([&]() { K_mer kMer(s, ret.first); }));
     }
@@ -76,9 +77,9 @@ namespace LSH_CPP::Test {
         using std_hash_map = std::unordered_map<uint64_t, std::string>;
         using parallel_hash_map = phmap::flat_hash_map<uint64_t, std::string>;
         printf("std::unordered_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert<std_hash_map>));
+               compute_function_time(hash_map_create_and_insert < std_hash_map > ));
         printf("phmap::flat_hash_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert<parallel_hash_map>));
+               compute_function_time(hash_map_create_and_insert < parallel_hash_map > ));
     }
 
     void test_hash() {
@@ -129,7 +130,7 @@ namespace LSH_CPP::Test {
                                                 "estimating", "the", "similarity", "between", "documents"};
         std::vector<std::string_view> data_3 = {"minhash", "is", "probability", "data", "structure", "for",
                                                 "estimating", "the", "similarity", "between", "documents"};
-        MinHash m1(XXStringViewHash64{}), m2(XXStringViewHash64{}), m3(XXStringViewHash64{});
+        MinHash m1(XXStringViewHash32{}), m2(XXStringViewHash32{}), m3(XXStringViewHash32{});
         m1.update(data_1);
         m2.update(data_2);
         m3.update(data_3);
@@ -137,7 +138,7 @@ namespace LSH_CPP::Test {
         // print_minhash_table(m1, m2);
         std::cout << "(m1,m3) jaccard similarity: " << estimated_jaccard_similarity(m1, m3) << "\n";
         // print_minhash_table(m1, m3);
-        double threshold = 0.67;
+        double threshold = 0.65;
         LSH lsh(threshold, {0.5, 0.5});
         // 尽量以减小false negative为主.(存在false positive也无所谓,因为后面会对candidate set进一步过滤false positive)
         lsh.print_config();
@@ -153,24 +154,6 @@ namespace LSH_CPP::Test {
     void test_generator_sequence() {
         constexpr auto array = make_constexpr_array(make_sequence<128>(step_rule<1>{}));
         std::cout << array[0] << " " << array[127] << "\n";
-    }
-
-
-//  TODO: 当前需要测试的情况有: (指标是 1. 正确率 / 召回率 ; 2. 测试变量包括下面的几个; 3. 用控制变量法; 4. 在 20-newspapers-benchmark 上测试 )
-//     修改　n_permutation => 画曲线 => 测试 xx_hash 计算 min_hash 在 n_permutation = ? 时 正确率最高 (注意同时兼顾效率);
-//     修改　Hash_function => xx_hash / mur_mur_hash / sha1_hash .. => 测试哪个hash在n_permutation多少下正确率最高 (同时兼顾效率);
-//     修改　随机算法 => std::mt19937_64/32 , numpy-cpp-random(查一下numpy-cpp), .. => 测试随机算法对正确性影响 (不过我觉得只要是均匀随机分布应该影响不大才对..)
-//     修改 seed 的值, => 测试seed不同下对 min_hash 正确率影响,不同的seed下min_hash_value_vector不同,最后也会影响LSH的结果(
-//      导致false_positive和false_negative变化 => 可能出现不该查到的查到了,该查出的反而查不出结果)
-//     修改 { false_positive_w , false_negative_w },测试哪种情况下准确率更好
-//     => 从逻辑上当然是尽量减少false_negative召回率越高,但是candidate-set准确率会下降(可能引入较多false_positive),
-//     不过考虑到后面还要对candidate-set过滤false-positive,所以重点还是减少false_negative,
-//     权重测试: {0.0 1.0} {0.1 0.9}  {0.2 0.8} {0.3, ..} ... {1.0,0.0}
-//  TODO: 调整测试重点 : 固定 Seed = 1 , weight = {0.5 0.5}(均衡惩罚)
-//   =>　修改 n_permutation [128 -> 1024] 对正确率影响(兼顾效率)
-//   =>  加入 sha_1/mur_mur_hash(std::hash) 测试不同hash的正确率及效率
-    void lsh_benchmark() {
-
     }
 
     void test() {

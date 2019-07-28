@@ -1,4 +1,4 @@
-#include "./include/test.h"
+#include "test.h"
 
 int main() {
     LSH_CPP::Test::test();

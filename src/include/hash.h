@@ -81,7 +81,7 @@ namespace LSH_CPP {
         }
     };
 
-    // static element-wise hash (兼容 vector / array / list 等顺序容器,以及 各种类型的hash结构体)
+    // static element-wise hash (兼容 vector / list 几个顺序容器,以及 各种类型的hash结构体)
     // 注意下面这个函数,参数是 const hash<..> & hash_fun,也就是一个const对象,
     // 所以它只能调用 hash 类的const函数, 要把hash类所有的函数都标记为const才能正确调用
     template<
