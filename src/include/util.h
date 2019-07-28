@@ -154,5 +154,38 @@ namespace LSH_CPP {
         }
     }
 #endif
+
+    // 编译期生成固定序列
+    // reference: https://stackoverflow.com/questions/45940284/array-initialisation-compile-time-constexpr-sequence
+    namespace detail {
+        template<size_t ... Is>
+        constexpr auto make_constexpr_array_from_sequence_impl(std::index_sequence<Is...>) {
+            return std::array{Is...}; // C++ 17 simplify
+        }
+
+        template<size_t ...Is, typename generator_rule>
+        constexpr auto make_sequence_impl(std::index_sequence<Is...>, generator_rule rule) {
+            return std::index_sequence<rule(Is)...>{};
+        }
+    }
+
+    // 第i个位置的数据为 i + step (可以任意修改规则,从而生成不同的序列)
+    template<size_t step = 1>
+    struct step_rule {
+        constexpr auto operator()(size_t index) {
+            return index + step;
+        }
+    };
+
+    template<size_t N, typename generator_rule>
+    constexpr auto make_sequence(generator_rule rule) {
+        return detail::make_sequence_impl(std::make_index_sequence<N>{}, rule);
+    }
+
+    // use-case: constexpr auto array = make_constexpr_array(make_sequence<128>(step_rule<1>{}));
+    template<typename Sequence>
+    constexpr auto make_constexpr_array(Sequence sequence) {
+        return detail::make_constexpr_array_from_sequence_impl(sequence);
+    }
 }
 #endif //LSH_CPP_UTIL_H

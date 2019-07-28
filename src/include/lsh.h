@@ -28,7 +28,7 @@ namespace LSH_CPP {
             typename MinHashLabel = std::string_view,
             size_t b = 0,
             size_t r = 0,
-            size_t n_permutation = 512
+            size_t n_permutation = 128
     >
     class LSH {
     public:

@@ -17,10 +17,10 @@ namespace LSH_CPP {
     /**
      * 生成n个随机hash函数(随机permutation),用于计算 MinHash
      */
-    template<size_t Seed = 0,
+    template<size_t Seed,
             // typename Seed = std::random_device,
-            typename RandomGenerator = std::mt19937_64,
-            size_t n_permutation = 128>
+            typename RandomGenerator,
+            size_t n_permutation>
     struct RandomHashPermutation {
         /**
          * permutation-random hash algorithm:
@@ -57,8 +57,8 @@ namespace LSH_CPP {
             static_assert(n_permutation <= max_n_permutation);
             // Seed seed;
             RandomGenerator generator(Seed);
-            std::uniform_int_distribution<uint64_t> dis_a(1, mersenne_prime);
-            std::uniform_int_distribution<uint64_t> dis_b(0, mersenne_prime);
+            std::uniform_int_distribution<uint64_t> dis_a(1, mersenne_prime - 1); // range [1,mersenne_prime-1]
+            std::uniform_int_distribution<uint64_t> dis_b(0, mersenne_prime - 1); // range [0,mersenne_prime-1]
             vector_a.reserve(n_permutation);
             vector_b.reserve(n_permutation);
             for (size_t i = 0; i < n_permutation; i++) {
@@ -81,8 +81,8 @@ namespace LSH_CPP {
      */
     template<typename HashFunc,       // 将数据集合的元素(主要字符串类型,但也可以是其他类型)映射到整数的哈希函数
             size_t MinHashBits = 32,  // 最小哈希值的实际位数(可以是32bit或64bit,但内部储存最小哈希统一用uint64_t)
-            size_t n_permutation = 512, // RandomHashPermutation中随机哈希函数的个数
-            size_t Seed = 0,            // RandomHashPermutation中随机数生成器的种子
+            size_t n_permutation = 128, // RandomHashPermutation中随机哈希函数的个数
+            size_t Seed = 1,            // RandomHashPermutation中随机数生成器的种子
             //typename Seed = std::random_device,
             typename RandomGenerator = std::mt19937_64 // RandomHashPermutation中的随机数生成器,默认用std::mt19937_64.
     >
