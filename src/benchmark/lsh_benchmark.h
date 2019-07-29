@@ -7,6 +7,7 @@
 
 #include "../include/lsh_cpp.h"
 
+namespace LSH_CPP::Benchmark {
 //  TODO: 当前需要测试的情况有: (指标是 1. 正确率 / 召回率 ; 2. 测试变量包括下面的几个; 3. 用控制变量法; 4. 在 20-newspapers-benchmark 上测试 )
 //     修改　n_permutation => 画曲线 => 测试 xx_hash 计算 min_hash 在 n_permutation = ? 时 正确率最高 (注意同时兼顾效率);
 //     修改　Hash_function => xx_hash / mur_mur_hash / sha1_hash .. => 测试哪个hash在n_permutation多少下正确率最高 (同时兼顾效率);
@@ -20,8 +21,8 @@
 //  TODO: 调整测试重点 : ( 测试过程固定 : Seed = 1; weight = { 0.5 0.5 } ; 使用XXStringViewHash32[好像效果更好] )
 //   =>　修改 n_permutation [128 -> 1024] 对正确率影响(兼顾效率)
 //   =>  加入 sha_1/mur_mur_hash(std::hash) 测试不同hash(32/64)的正确率及效率
-void lsh_benchmark() {
+    void lsh_benchmark() {
 
+    }
 }
-
 #endif //LSH_CPP_LSH_BENCHMARK_H

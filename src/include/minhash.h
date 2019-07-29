@@ -155,7 +155,7 @@ namespace LSH_CPP {
 #endif
         }
 
-        [[nodiscard]] inline size_t length() const {
+        [[nodiscard]]constexpr inline size_t length() const {
             return n_permutation;
         }
     };

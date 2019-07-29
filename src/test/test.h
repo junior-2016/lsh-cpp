@@ -123,6 +123,11 @@ namespace LSH_CPP::Test {
         printf("similarity: %.8f ; update-time : %.8f seconds ; similarity-time %.8f \n", ret, time, time_2);
     }
 
+    /**
+     * 测试得到的相对较好的参数设置:
+     * MinHash : Seed = 1; 使用 XXStringViewHash32{} ; n_permutation = 128 (n_permutation可以考虑用 benchmark 测试)
+     * LSH : weights = { 0.5 , 0.5 }
+     */
     void test_lsh_minhash() {
         std::vector<std::string_view> data_1 = {"minhash", "is", "a", "probabilistic", "data", "structure", "for",
                                                 "estimating", "the", "similarity", "between", "datasets"};
@@ -138,9 +143,8 @@ namespace LSH_CPP::Test {
         // print_minhash_table(m1, m2);
         std::cout << "(m1,m3) jaccard similarity: " << estimated_jaccard_similarity(m1, m3) << "\n";
         // print_minhash_table(m1, m3);
-        double threshold = 0.65;
+        double threshold = 0.7;
         LSH lsh(threshold, {0.5, 0.5});
-        // 尽量以减小false negative为主.(存在false positive也无所谓,因为后面会对candidate set进一步过滤false positive)
         lsh.print_config();
         lsh.insert(m2, "m2");
         lsh.insert(m3, "m3");
@@ -149,11 +153,33 @@ namespace LSH_CPP::Test {
         for (const auto &item:ret) {
             std::cout << item << " ";
         }
+        std::cout << "\n";
     }
 
-    void test_generator_sequence() {
-        constexpr auto array = make_constexpr_array(make_sequence<128>(step_rule<1>{}));
-        std::cout << array[0] << " " << array[127] << "\n";
+    void test_make_constexpr_array() {
+        constexpr auto array = make_constexpr_array(make_sequence<10>([](size_t index) { return index * 2 + 10; }));
+
+        // run-time iteration
+        std::for_each(array.begin(), array.end(), [](const auto &item) { std::cout << item << " "; });
+        std::cout << std::endl;
+
+        // compile-time iteration (use for constexpr)
+        for_constexpr<for_bounds<0, array.size()>>([&](auto index) {
+            std::cout << "index: " << index << " value: " << array[index] << "\n";
+        });
+    }
+
+    // for_constexpr example: create MinHash by constexpr n_permutation array in compile time.
+    void test_for_constexpr() {
+        std::vector<std::string_view> data;
+        for (size_t i = 0; i < 10; i++) { data.push_back(std::to_string(i)); }
+        constexpr std::array n_permutations{50, 60, 70, 80, 90, 100, 110, 128};
+        for_constexpr<for_bounds<0, n_permutations.size()>>([&](auto index) {
+            constexpr size_t n_permutation = n_permutations[index];
+            MinHash<XXStringViewHash32, 32, n_permutation> minHash(XXStringViewHash32{});
+            minHash.update(data);
+            print_sequence_container(minHash.hash_values);
+        });
     }
 
     void test() {
@@ -162,8 +188,9 @@ namespace LSH_CPP::Test {
         //test_k_mer_split();
         //test_hash();
         //test_min_hash();
-        //test_generator_sequence();
         test_lsh_minhash();
+        test_make_constexpr_array();
+        test_for_constexpr();
     }
 }
 #endif //LSH_CPP_TEST_H

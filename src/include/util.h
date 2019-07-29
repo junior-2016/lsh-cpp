@@ -169,23 +169,50 @@ namespace LSH_CPP {
         }
     }
 
-    // 第i个位置的数据为 i + step (可以任意修改规则,从而生成不同的序列)
-    template<size_t step = 1>
-    struct step_rule {
-        constexpr auto operator()(size_t index) {
-            return index + step;
-        }
-    };
-
     template<size_t N, typename generator_rule>
     constexpr auto make_sequence(generator_rule rule) {
         return detail::make_sequence_impl(std::make_index_sequence<N>{}, rule);
     }
 
-    // use-case: constexpr auto array = make_constexpr_array(make_sequence<128>(step_rule<1>{}));
+    // 使用样例见test.h
     template<typename Sequence>
     constexpr auto make_constexpr_array(Sequence sequence) {
         return detail::make_constexpr_array_from_sequence_impl(sequence);
+    }
+
+    // 不用 std::array,直接使用 constexpr std::integer_sequence<Type,num1,num2,...> sequence;
+    // 然后通过 constexpr Type val = get_sequence_value_by_index(sequence,index); 得到对应位置的值
+    // 不过这里使用时 index 必须是 const expression, 不能是变量. 比如下面的:
+    // for (size_t index = 0; index < sequence.size(); index++) { constexpr Type val = get_sequence_value_by_index(sequence,index); }
+    // 就不能通过编译. 因为index是变量,虽然它的变化范围相当明确,但它语义上不属于constexpr. 要执行这种for-loop的constexpr只能自己实现.
+    template<typename T, T ... Numbers>
+    constexpr T get_sequence_value_by_index(std::integer_sequence<T, Numbers ...>, size_t index) {
+        constexpr T temp[] = {Numbers ...};
+        return temp[index];
+    }
+
+    // for-loop constexpr
+    // reference: https://nilsdeppe.com/posts/for-constexpr
+    // test-case 见 test.h
+    template<size_t Lower, size_t Upper>
+    struct for_bounds {
+        static constexpr const size_t lower = Lower;
+        static constexpr const size_t upper = Upper;
+    };
+    namespace detail {
+        template<size_t lower, size_t... Is, class F>
+        void for_constexpr_impl(F &&f,
+                                std::index_sequence<Is...> /*meta*/) {
+            (void) std::initializer_list<char>{
+                    ((void) f(std::integral_constant<size_t, Is + lower>{}),
+                            '0')...};
+        }
+    }  // namespace for_constexpr_impl
+    template<class Bounds0, class F>
+    void for_constexpr(F &&f) {
+        detail::for_constexpr_impl<Bounds0::lower>(
+                std::forward<F>(f),
+                std::make_index_sequence<Bounds0::upper - Bounds0::lower>{});
     }
 }
 #endif //LSH_CPP_UTIL_H
