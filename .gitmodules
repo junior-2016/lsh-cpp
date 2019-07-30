@@ -4,9 +4,6 @@
 [submodule "third-party/parallel-hashmap"]
 	path = third-party/parallel-hashmap
 	url = https://github.com/greg7mdp/parallel-hashmap.git
-[submodule "third-party/abseil-cpp"]
-	path = third-party/abseil-cpp
-	url = git@github.com:abseil/abseil-cpp.git
 [submodule "third-party/xxhash_cpp"]
 	path = third-party/xxhash_cpp
 	url = https://github.com/RedSpah/xxhash_cpp.git
