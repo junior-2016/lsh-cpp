@@ -61,15 +61,22 @@ namespace LSH_CPP::Test {
 
     void test_k_mer_split() {
         std::cout << "============ Test K_mer split. =============\n";
-        std::string s;
+        std::string s, temp = "ATCGCCTACTGCTACCCTAATCGGCTAATTCTTTGCTAGCTT";
         size_t k = 9;
+        std::uniform_int_distribution<size_t> dis(1, temp.size());
+        std::mt19937_64 generator(std::random_device{}());
         for (int i = 0; i < 1000000; i++) {
-            s += "abcdefghijklmnopqrstuvwxyz";
+            std::sample(temp.begin(), temp.end(), std::back_inserter(s), dis(generator),
+                        std::mt19937_64{std::random_device{}()});
         }
-        auto ret = compute_function_time<std::vector<std::string_view >>
-                (split_k_mer_fast, s, k);
+        std::cout << "string size : " << s.size() << "\n";
+        std::cout << "k parameter : " << k << "\n";
+        auto ret = compute_function_time<phmap::flat_hash_set<K_mer>>(split_k_mer_fast, s, k);
         printf("split_k_mer_fast: %.8f seconds\n", ret.second);
-        // printf("create k_mer time %.8f seconds\n", compute_function_time([&]() { K_mer kMer(s, ret.first); }));
+        std::cout << "k_mer set size (not repeat element) : " << ret.first.size() << "\n";
+        size_t count = 0;
+        for (const auto &item:ret.first) { count += item.pos_list.size(); }
+        std::cout << "k_mer set size (include repeat element) : " << count << "\n";
     }
 
     void test_hash_map_performance() {
@@ -84,12 +91,6 @@ namespace LSH_CPP::Test {
 
     void test_hash() {
         std::cout << "============ Test Hash Function =============\n";
-//        std::string s;
-//        size_t k = 1000;
-//        for (int i = 0; i < 1000000; i++) {
-//            s += "abcdefghijklmnopqrstuvwxyz";
-//        }
-//        auto string_array = split_k_mer_fast(s, k);
         std::vector<std::string_view> string_view_array =
                 {"hello", "hello", "you", "me", "my", "you", "please", "hello"};
         std::vector<std::string> string_array =
@@ -100,22 +101,18 @@ namespace LSH_CPP::Test {
     }
 
     void test_min_hash() {
-        std::vector<std::string_view> data1 = {"minhash", "is", "a", "probabilistic", "data", "structure", "for",
-                                               "estimating", "the", "similarity", "between", "datasets"};
+        phmap::flat_hash_set<std::string_view> data1 =
+                {"minhash", "is", "a", "probabilistic", "data", "structure", "for",
+                 "estimating", "the", "similarity", "between", "datasets"};
 
-        std::vector<std::string_view> data2 = {"minhash", "is", "a", "probability", "data", "structure", "for",
-                                               "estimating", "the", "similarity", "between", "documents"};
-        std::string s;
-        size_t k = 12;
-        for (int i = 0; i < 100000; i++) {
-            s += "abcdefghijklmnopqrstuvwxyz";
-        }
-        auto string_array = split_k_mer_fast(s, k);
+        phmap::flat_hash_set<std::string_view> data2 =
+                {"minhash", "is", "a", "probability", "data", "structure", "for",
+                 "estimating", "the", "similarity", "between", "documents"};
         MinHash hash1(XXStringViewHash64{});
         MinHash hash2(XXStringViewHash64{});
         TimeVar start = timeNow();
-        hash1.update(string_array);
-        hash2.update(string_array);
+        hash1.update(data1);
+        hash2.update(data2);
         double time = duration(timeNow() - start);
         start = timeNow();
         auto ret = estimated_jaccard_similarity(hash1, hash2);
@@ -129,12 +126,14 @@ namespace LSH_CPP::Test {
      * LSH : weights = { 0.5 , 0.5 }
      */
     void test_lsh_minhash() {
-        std::vector<std::string_view> data_1 = {"minhash", "is", "a", "probabilistic", "data", "structure", "for",
-                                                "estimating", "the", "similarity", "between", "datasets"};
-        std::vector<std::string_view> data_2 = {"minhash", "is", "a", "probability", "data", "structure", "for",
-                                                "estimating", "the", "similarity", "between", "documents"};
-        std::vector<std::string_view> data_3 = {"minhash", "is", "probability", "data", "structure", "for",
-                                                "estimating", "the", "similarity", "between", "documents"};
+        phmap::flat_hash_set<std::string_view> data_1 = {"minhash", "is", "a", "probabilistic", "data", "structure",
+                                                         "for", "estimating", "the", "similarity", "between",
+                                                         "datasets"};
+        phmap::flat_hash_set<std::string_view> data_2 = {"minhash", "is", "a", "probability", "data", "structure",
+                                                         "for", "estimating", "the", "similarity", "between",
+                                                         "documents"};
+        phmap::flat_hash_set<std::string_view> data_3 = {"minhash", "is", "probability", "data", "structure", "for",
+                                                         "estimating", "the", "similarity", "between", "documents"};
         MinHash m1(XXStringViewHash32{}), m2(XXStringViewHash32{}), m3(XXStringViewHash32{});
         m1.update(data_1);
         m2.update(data_2);
@@ -189,8 +188,8 @@ namespace LSH_CPP::Test {
         //test_hash();
         //test_min_hash();
         test_lsh_minhash();
-        test_make_constexpr_array();
-        test_for_constexpr();
+        //test_make_constexpr_array();
+        //test_for_constexpr();
     }
 }
 #endif //LSH_CPP_TEST_H

@@ -8,6 +8,34 @@
 #include "lsh_cpp.h"
 
 namespace LSH_CPP {
+    struct K_mer {
+        bool operator==(const K_mer &kMer) const {
+            return value == kMer.value;
+        }
+
+        std::string_view value;
+        mutable std::vector<size_t> pos_list;
+        // TODO: pos_list 后面可以考虑用BitSet压缩,不然内存开销会很大.
+        //  方法: 先使用相对位置编码,保留pos_list[0],剩下的保存相邻元素的差值,比如原pos_list是{ 0,10,28,35,45 }
+        //  相对位置编码为 { 0,10-0,28-10,35-28,45-35 } = { 0,10,18,7,10 } .
+        //  然后再用unary_bit_set对上面的序列做位编码(见<<信息检索>>相关压缩方法).
+
+        // 通过weight()方法得到权重(重复元素个数).
+        size_t weight() const {
+            return pos_list.size();
+        }
+    };
+} // 前置声明
+namespace std {
+    // inject specialization of std::hash for K_mer
+    template<>
+    struct hash<LSH_CPP::K_mer> {
+        std::size_t operator()(LSH_CPP::K_mer const &k_mer) const {
+            return phmap::HashState::combine(0, k_mer.value);
+        }
+    };
+}
+namespace LSH_CPP {
     /**
      * Non-capture lambda can be transfer to function pointer directly,
      * so the first argument can be a non-capture function with <double (*)(double, void *)> signature.
@@ -72,17 +100,25 @@ namespace LSH_CPP {
      * 因此在使用string_view时要格外小心源字符串的生命周期
      */
     // 更快的k_mer_split,但是需要考虑源字符串的生命周期.
-    std::vector<std::string_view> split_k_mer_fast(const std::string_view &string, size_t k) {
-        if (k >= string.size()) { return {string}; }
+    phmap::flat_hash_set<K_mer> split_k_mer_fast(const std::string_view &string, size_t k) {
+        if (k >= string.size()) {
+            return {{string, {0}}};
+        }
         size_t N = string.size() - k + 1;
-        std::vector<std::string_view> result;
-        result.reserve(N);
+        phmap::flat_hash_set<K_mer> result;
         for (size_t i = 0; i < N; i++) {
-            result.push_back(string.substr(i, k));
+            auto substr = string.substr(i, k);
+            // 这里pos_list一开始留空,等后面插入(不管成功还是失败)后,从返回值的first得到迭代器,然后再修改pos_list.
+            // 本来 unordered_set.insert(Key) 返回的应该是 { const_iterator, bool },
+            // 但因为我们把 K_mer 结构体的 pos_list 成员改为 mutable(可变). 因此,即使是const_iterator,也可以修改它.
+            // 这样写可以最大效率实现插入和修改pos_list,完全不需要插入一次,再查找一次,因为插入的时候本身就是在查找.
+            // 另外,这种写法完全可以用 map [key(不可变部分)] = value (可变部分) 来代替.
+            (*(result.insert(K_mer{substr, {}})).first).pos_list.push_back(i);
         }
         return result;
     }
 
+//    废弃担心std::string生命周期影响std::string_view而引入的K_mer
 //    struct K_mer {
 //        const std::string origin_string;
 //        std::vector<std::string_view> sub_strings;

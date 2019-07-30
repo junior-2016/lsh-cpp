@@ -35,11 +35,8 @@ set(PYTHON_INCLUDE_PATH "$ENV{HOME}/anaconda3/include/python3.7m")
 set(NUMPY_CONDA_INCLUDE "$ENV{HOME}/anaconda3/lib/python3.7/site-packages/numpy/core/include")
 set(PYTHON_LIBRARIES "$ENV{HOME}/anaconda3/lib/libpython3.7m.so")
 
-# add google abseil-cpp library dependency
-add_subdirectory(./third-party/abseil-cpp)
-
 # source file path
-set(SELF_INCLUDE src/include/)
+file(GLOB Self_include_file "src/include/*.h")
 file(GLOB Test_file "src/test/*.cpp" "src/test/*.h")
 file(GLOB Benchmark_file "src/benchmark/*.h" "src/benchmark/*.cpp")
 
@@ -56,17 +53,15 @@ IF (USE_SIMD)
 ENDIF (USE_SIMD)
 
 if (Boost_FOUND AND GSL_FOUND)
-    include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE} ${SELF_INCLUDE})
+    include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE})
     if (TEST)
-        add_executable(lsh_cpp_test ${Test_file})
+        add_executable(lsh_cpp_test ${Self_include_file} ${Test_file} )
         target_include_directories(lsh_cpp_test PRIVATE ${PYTHON_INCLUDE_PATH})
-        target_link_libraries(lsh_cpp_test absl::hash ${Boost_LIBRARIES} ${PYTHON_LIBRARIES}
-                GSL::gsl GSL::gslcblas)
+        target_link_libraries(lsh_cpp_test ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} GSL::gsl GSL::gslcblas)
     ENDIF ()
     if (BENCHMARK)
-        add_executable(lsh_cpp_benchmark ${Benchmark_file})
+        add_executable(lsh_cpp_benchmark ${Self_include_file} ${Benchmark_file})
         target_include_directories(lsh_cpp_benchmark PRIVATE ${PYTHON_INCLUDE_PATH})
-        target_link_libraries(lsh_cpp_benchmark absl::hash ${Boost_LIBRARIES} ${PYTHON_LIBRARIES}
-                GSL::gsl GSL::gslcblas)
+        target_link_libraries(lsh_cpp_benchmark ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} GSL::gsl GSL::gslcblas)
     ENDIF ()
 endif ()

@@ -22,7 +22,16 @@ namespace LSH_CPP::Benchmark {
 //   =>　修改 n_permutation [128 -> 1024] 对正确率影响(兼顾效率)
 //   =>  加入 sha_1/mur_mur_hash(std::hash) 测试不同hash(32/64)的正确率及效率
     void lsh_benchmark() {
+        constexpr size_t population_size = 500;
+        constexpr size_t train_set_size = 1000;
+        constexpr size_t test_set_size = 100;
+        auto ret = bootstrap_data<population_size, train_set_size, test_set_size>({10, 500}); // [10,500]
+        if (!ret) {
+            std::cout << "False bootstrap data!\n";
+            std::exit(-1);
+        }
 
+        clear_data();
     }
 }
 #endif //LSH_CPP_LSH_BENCHMARK_H

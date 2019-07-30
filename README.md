@@ -49,6 +49,7 @@ $ ln -s libstdc++.so.6.0.26 libstdc++.so.6
     - [ ] LSH Forest impl
     - [ ] LSH ensemble impl
     - [ ] Weight MinHash impl
+    - [ ] Lean MinHash impl (减少内存使用/压缩数据及参数/内存缓冲池)
     - [ ] HyperLog / HyperLog++ impl
 
 - [ ] LSH_CPP Large-scale data support

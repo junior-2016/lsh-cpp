@@ -1,9 +1,9 @@
 //
 // Created by junior on 2019/7/28.
 //
-#include "lsh_benchmark.h"
+#include "benchmark.h"
 
 int main() {
-    std::cout << "benchmark.\n";
+    LSH_CPP::Benchmark::run_benchmark();
     return 0;
 }

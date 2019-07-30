@@ -32,8 +32,12 @@ namespace LSH_CPP {
          * let min_hash_vector = [1 1 1 ... 1] * min_hash_max_range (size: n_permutation)
          * let mersenne_prime = (1<<61)-1 // max mersenne prime that approaching 2^64-1
          * for ( di in D_m ){
-         *     // use element_wise_and function to extract low 32bit.
-         *     // element_wise_and 可以考虑用 sse 指令优化
+         *     // Actually it is a linear permutation. Because we want to construct min_hash family :
+         *     // \mathcal{H}=\left\{h_{\pi} : h_{\pi}(A)=\max _{a \in A} \pi(a)\right\} (latex),
+         *     // so we should construct \pi to hash all word to Number field U = { 0,1, ... ,u } (u large enough to make collisions unlikely.)
+         *     // Finally we use linear permutation : \pi(x) = ( a * x + b ) % u, a and b random, u is max(U).
+         *     // Here we use U = {0, 1, ... , mersenne_prime }, but we use element_wise_and function to extract low 32bit finally
+         *     // (It is equally mod min_hash_max_range).
          *     auto min_hash_vector_now = element_wise_and( (a_vector * di + b_vector) % mersenne_prime ,min_hash_max_range)
          *     // update min_hash_vector
          *     min_hash_vector = min(min_hash_vector_now, min_hash_vector)
@@ -110,9 +114,66 @@ namespace LSH_CPP {
             hash_values.resize(n_permutation, _max_hash_range);
         }
 
-        void update(const std::vector<std::string_view> &data) {
-            auto values = element_wise_hash(hash_func, data);
-            for (const auto &value:values) {
+        /**
+         * 1.
+         * update (T) 兼容任意类型数据,这样就可以轻松扩展到用户自定义数据集合的MinHash计算.
+         * 只要特化 LSH_CPP::xxHash<T> 对这种类型进行哈希即可.
+         * example:
+         * struct K_mer { std::string_view value; Other_member ...  } // 注意这里需要针对 flat_hash_set 给出 K_mer 的哈希函数.
+         * phmap::flat_hash_set<K_mer> k_mer_set = { ..... } // init set
+         * template <>
+         * struct xxHash<K_mer> { // partial specialization for K_mer
+         *     uint64_t operator()(const K_mer & k_mer) { return xx_hash<64>(k_mer.value); }
+         * }
+         * 2. 如何处理带有权重的 Min Hash 计算
+         * 先考虑带有权重的 Jaccard_similarity 如何计算 ?
+         *   => 使用Generalized_jaccard_index (见minhash.h中actual_jaccard_similarity函数的注释描述)
+         * 下一步是考虑在当前 Weight_Jaccard_similarity 下, 如何计算 MinHash 可以使得它在概率上存在:
+         * P { min_hash(A) == min_hash(B) } = Weight_Jaccard_Similarity(A,B).
+         *   => 参考 Improved Consistent Sampling, Weighted Minhash and L1 Sketching
+         *   => TODO : ???
+         * @tparam T 集合数据类型
+         * @tparam is_weight T 是否存在 weight() 权重函数(如果存在权重函数,说明处理的集合是multiset)
+         * @param val
+         */
+        template<bool is_weight = false, typename T>
+        void update(const T &val) {
+            size_t weight = 1; // 无权重下 weight = 1
+            auto value = hash_func(val);
+            if constexpr (is_weight) {
+                weight = val.weight();
+            }
+#ifdef USE_SIMD
+            __simd_combine_fast__<xsimd::aligned_mode, n_permutation>
+                    (permutation.vector_a, permutation.vector_b, hash_values, hash_values,
+                     [&](const xsimd::simd_type<uint64_t> &a,
+                         const xsimd::simd_type<uint64_t> &b,
+                         const xsimd::simd_type<uint64_t> &c) {
+                         return xsimd::min((((value) * a  + b) % mersenne_prime) & _max_hash_range, c);
+                     });
+#else
+            for (size_t i = 0; i < n_permutation; i++) {
+                uint64_t ret = ((value * permutation.vector_a[i] + permutation.vector_b[i]) % mersenne_prime) &
+                               _max_hash_range;
+                hash_values[i] = std::min(hash_values[i], ret);
+            }
+#endif
+        }
+
+        /**
+         * 兼容任意类型数据集合的MinHash计算,用法同上.不同在于这里是对一个集合对所有元素进行操作,然后更新 min_hash vector.
+         * @tparam T 集合元素类型
+         * @tparam is_weight T是否存在权重函数 weight()
+         * @param data_set 数据集
+         */
+        template<bool is_weight = false, typename T>
+        void update(const phmap::flat_hash_set<T> &data_set) {
+            for (const auto &data:data_set) {
+                auto value = hash_func(data);
+                size_t weight = 1; // 无权重下 weight = 1
+                if constexpr (is_weight) {
+                    weight = data.weight(); // is_weight为true的前提是类型T存在weight()权重函数
+                }
 #ifdef USE_SIMD
                 // 1. 使用组合式的simd函数,这样就不需要额外创建一个result的开销了;
                 // 2. 这里假设了你的容器元素数量恰好可以被完全simd化,不会留下多余的部分,也就不需要额外提供处理函数,
@@ -123,7 +184,7 @@ namespace LSH_CPP {
                          [&](const xsimd::simd_type<uint64_t> &a,
                              const xsimd::simd_type<uint64_t> &b,
                              const xsimd::simd_type<uint64_t> &c) {
-                             return xsimd::min(((a * value + b) % mersenne_prime) & _max_hash_range, c);
+                             return xsimd::min((((value) * a + b) % mersenne_prime) & _max_hash_range, c);
                          });
 
 #else
@@ -136,32 +197,14 @@ namespace LSH_CPP {
             }
         }
 
-        void update(std::string_view string) {
-            auto value = hash_func(string);
-#ifdef USE_SIMD
-            __simd_combine_fast__<xsimd::aligned_mode, n_permutation>
-                    (permutation.vector_a, permutation.vector_b, hash_values, hash_values,
-                     [&](const xsimd::simd_type<uint64_t> &a,
-                         const xsimd::simd_type<uint64_t> &b,
-                         const xsimd::simd_type<uint64_t> &c) {
-                         return xsimd::min(((a * value + b) % mersenne_prime) & _max_hash_range, c);
-                     });
-#else
-            for (size_t i = 0; i < n_permutation; i++) {
-                uint64_t ret = ((value * permutation.vector_a[i] + permutation.vector_b[i]) % mersenne_prime) &
-                               _max_hash_range;
-                hash_values[i] = std::min(hash_values[i], ret);
-            }
-#endif
-        }
-
         [[nodiscard]]constexpr inline size_t length() const {
             return n_permutation;
         }
     };
 
     // 下面的 jaccard_similarity 计算公式是通过 min_hash_value_vector 估计得到的,
-    // 只是从概率上和真实的jaccard_similarity相等,但真实的jaccard_similarity值和这个还是有偏差的
+    // 只是从概率上和真实的jaccard_similarity相等,和真实的jaccard_similarity依然存在偏差.
+    // TODO: 考虑有权重情况下MinHash Value的Jaccard-similarity概率上是否等于有权重的集合的Jaccard_similarity
     template<typename H,
             size_t _min_hash_bits,
             size_t _n_permutation,
@@ -179,11 +222,18 @@ namespace LSH_CPP {
         return (double) count / (double) _n_permutation;
     }
 
-    // 计算真实的 jaccard_similarity = (A intersection B) / (A union B)
-    double actual_jaccard_similarity(const phmap::flat_hash_set<std::string_view> &A,
-                                     const phmap::flat_hash_set<std::string_view> &B) {
-        // fast compute A_set intersection B && A_set union B
-        return 0;
+    // 无权重的jaccard相似度计算: jaccard_similarity = (A intersection B) / (A union B). 使用HashSet,复杂度O(N).
+    // TODO : 有权重的jaccard相似度计算(使用Generalized Jaccard Index):
+    //    https://en.wikipedia.org/wiki/Jaccard_index#Generalized_Jaccard_similarity_and_distance Weighted Jaccard Similarity。
+    //    Example: A = { a, a, a, b, b, c } B = { a, a, b, b, b, d }
+    //    Weight_Jaccard_Similarity (A,B)
+    //        = (min(A_a,B_a)+min(A_b,B_b)+min(A_c,B_c)+min(A_d,B_d)) / (max(A_a,B_a)+max(A_b,B_b)+max(A_c,B_c)+max(A_d,B_d))
+    //        = ( 2 + 2 + 0 + 0 ) / ( 3 + 3 + 1 + 1 ) = 4 / 8  = 0.5
+    template<bool is_weight = false, typename T>
+    double actual_jaccard_similarity(const phmap::flat_hash_set<T> &A, const phmap::flat_hash_set<T> &B) {
+        double count = 0;
+        for (const auto &item:A) { if (B.find(item) != B.end()) count++; }
+        return count / (A.size() + B.size() - count);
     }
 
     template<typename H,

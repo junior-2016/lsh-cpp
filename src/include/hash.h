@@ -81,25 +81,62 @@ namespace LSH_CPP {
         }
     };
 
-    // static element-wise hash (兼容 vector / list 几个顺序容器,以及 各种类型的hash结构体)
-    // 注意下面这个函数,参数是 const hash<..> & hash_fun,也就是一个const对象,
+    // 注意下面的函数,参数是 const hash<..> & hash_fun,也就是一个const对象,
     // 所以它只能调用 hash 类的const函数, 要把hash类所有的函数都标记为const才能正确调用
+    // element_wise_hash for sequence container
     template<
             template<typename /*Element*/, typename /*Alloc*/> typename Container,
             template<typename /* KeyType */ > typename Hash,
             typename KeyType,
             typename Alloc = std::allocator<KeyType>,
             size_t Bits>
-    Container<typename HashValueType<Bits>::type, Alloc>
-    element_wise_hash(const hash<Hash, KeyType, Bits> &hash_func,
-                      const Container<KeyType, Alloc> &container) {
-        Container<typename HashValueType<Bits>::type, Alloc> ret;
+    std::vector<typename HashValueType<Bits>::type> element_wise_hash(
+            const hash<Hash, KeyType, Bits> &hash_func,
+            const Container<KeyType, Alloc> &container) {
+        std::vector<typename HashValueType<Bits>::type> ret;
         ret.reserve(container.size()); // 使用 reserve() 提前分配空间但是不初始化
         std::for_each(std::begin(container), std::end(container),
                       [&](const KeyType &key) { ret.push_back(hash_func(key)); });
         return ret;
     }
 
+    // element_wise_hash for ordered set(balanced binary search tree implement set/multiple_set)
+    template<
+            template<typename /* Key */, typename /* Compare */, typename /* Alloc */> typename Set,
+            template<typename /* KeyType */ > typename Hash,
+            typename KeyType,
+            typename Compare = std::less<KeyType>,
+            typename Alloc = std::allocator<KeyType>,
+            size_t Bits>
+    std::vector<typename HashValueType<Bits>::type>
+    element_wise_hash(const hash<Hash, KeyType, Bits> &hash_func,
+                      const Set<KeyType, Compare, Alloc> &set) {
+        std::vector<typename HashValueType<Bits>::type> ret;
+        ret.reserve(set.size()); // 使用 reserve() 提前分配空间但是不初始化
+        std::for_each(std::begin(set), std::end(set),
+                      [&](const KeyType &key) { ret.push_back(hash_func(key)); });
+        return ret;
+    }
+
+
+    // element_wise_hash for unordered_set(hash set/multiple_set)
+    template<
+            template<typename /* Key */, typename /* Hash */, typename /* Eq */, typename /* Alloc */ > typename HashSet,
+            template<typename /* KeyType */ > typename Hash,
+            typename KeyType,
+            typename _Hash,
+            typename _Eq,
+            typename _Alloc,
+            size_t Bits>
+    std::vector<typename HashValueType<Bits>::type> element_wise_hash(
+            const hash<Hash, KeyType, Bits> &hash_func,
+            const HashSet<KeyType, _Hash, _Eq, _Alloc> &hash_set) {
+        std::vector<typename HashValueType<Bits>::type> ret;
+        ret.reserve(hash_set.size()); // 使用 reserve() 提前分配空间但是不初始化
+        std::for_each(std::begin(hash_set), std::end(hash_set),
+                      [&](const KeyType &key) { ret.push_back(hash_func(key)); });
+        return ret;
+    }
 
     template<typename T>
     struct xx_Hash {
@@ -112,32 +149,35 @@ namespace LSH_CPP {
             return xxh::xxhash<64>(stringView);
         }
 
-        inline uint64_t operator()(const std::vector<std::basic_string_view<T>> &stringViews) {
+        inline uint64_t operator()(const std::vector<std::basic_string_view<T>> &) {
             // TODO: 空实现. 后面再补充,因为这里vector里面储存的是 string_view,并不是基本的数据类型比如int/char/double,
             //  所以不能直接传递整个vector
             return 0;
         }
 
-        inline uint64_t operator()(const std::vector<std::basic_string_view<T>> &string_view,
-                                   const std::pair<size_t, size_t> &range) {
+        inline uint64_t operator()(const std::vector<std::basic_string_view<T>> &,
+                                   const std::pair<size_t, size_t> &) {
             return 0;
         }
     };
 
     template<typename T>
     struct xx_Hash<std::basic_string<T>> {
-        inline uint64_t operator()(const std::basic_string<T> &string) {
-            return xxh::xxhash<64>(string);
-        }
+        inline uint64_t operator()(const std::basic_string<T> &string) { return xxh::xxhash<64>(string); }
 
-        inline uint64_t operator()(const std::vector<std::basic_string<T>> &strings) {
-            return 0; // TODO: 空实现
-        }
+        inline uint64_t operator()(const std::vector<std::basic_string<T>> &) { return 0; }
 
-        inline uint64_t operator()(const std::vector<std::basic_string<T>> &strings,
-                                   const std::pair<size_t, size_t> &range) {
-            return 0;
-        }
+        inline uint64_t operator()(const std::vector<std::basic_string<T>> &,
+                                   const std::pair<size_t, size_t> &) { return 0; }
+    };
+
+    template<>
+    struct xx_Hash<K_mer> {
+        inline uint64_t operator()(const K_mer &k_mer) { return xxh::xxhash<64>(k_mer.value); }
+
+        inline uint64_t operator()(const std::vector<K_mer> &) { return 0; }
+
+        inline uint64_t operator()(const std::vector<K_mer> &, const std::pair<size_t, size_t> &) { return 0; }
     };
 
     template<>
@@ -163,7 +203,7 @@ namespace LSH_CPP {
         }
     };
 
-    // string hash function
+// string hash function
     using XXStringViewHash64 = hash<xx_Hash, std::string_view, 64>; // char_t
     using XXStringViewHash32 = hash<xx_Hash, std::string_view, 32>; // char_t
     using XXWStringViewHash64 = hash<xx_Hash, std::wstring_view, 64>; // wchar_t
@@ -174,14 +214,13 @@ namespace LSH_CPP {
     using XXWStringHash64 = hash<xx_Hash, std::wstring, 64>;
     using XXWStringHash32 = hash<xx_Hash, std::wstring, 32>;
 
-    // integer hash function
+// integer hash function
     using XXUInt64Hash64 = hash<xx_Hash, uint64_t, 64>;
     using XXUInt64Hash32 = hash<xx_Hash, uint64_t, 32>;
 
-    //using DefaultStringHash64 = hash<std::hash, std::string_view, 64>;
-    //using DefaultStringHash32 = hash<std::hash, std::string_view, 32>;
-    //using AbslStringHash64 = hash<absl::Hash, std::string_view, 64>;
-    //using AbslStringHash32 = hash<absl::Hash, std::string_view, 32>;
+//    using StdStringViewHash64 = hash<std::hash, std::string_view, 64>;
+//    using StdStringViewHash32 = hash<std::hash, std::string_view, 32>;
+
 }
 
 #endif //LSH_CPP_HASH_H
