@@ -36,6 +36,11 @@ namespace std {
     };
 }
 namespace LSH_CPP {
+    template<typename T>
+    using HashSet = phmap::flat_hash_set<T>;
+    template<typename K, typename V>
+    using HashMap  = phmap::flat_hash_map<K, V>;
+
     /**
      * Non-capture lambda can be transfer to function pointer directly,
      * so the first argument can be a non-capture function with <double (*)(double, void *)> signature.
@@ -100,12 +105,12 @@ namespace LSH_CPP {
      * 因此在使用string_view时要格外小心源字符串的生命周期
      */
     // 更快的k_mer_split,但是需要考虑源字符串的生命周期.
-    phmap::flat_hash_set<K_mer> split_k_mer_fast(const std::string_view &string, size_t k) {
+    HashSet<K_mer> split_k_mer_fast(const std::string_view &string, size_t k) {
         if (k >= string.size()) {
             return {{string, {0}}};
         }
         size_t N = string.size() - k + 1;
-        phmap::flat_hash_set<K_mer> result;
+        HashSet<K_mer> result;
         for (size_t i = 0; i < N; i++) {
             auto substr = string.substr(i, k);
             // 这里pos_list一开始留空,等后面插入(不管成功还是失败)后,从返回值的first得到迭代器,然后再修改pos_list.

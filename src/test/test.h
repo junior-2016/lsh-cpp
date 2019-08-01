@@ -71,7 +71,7 @@ namespace LSH_CPP::Test {
         }
         std::cout << "string size : " << s.size() << "\n";
         std::cout << "k parameter : " << k << "\n";
-        auto ret = compute_function_time<phmap::flat_hash_set<K_mer>>(split_k_mer_fast, s, k);
+        auto ret = compute_function_time<HashSet<K_mer>>(split_k_mer_fast, s, k);
         printf("split_k_mer_fast: %.8f seconds\n", ret.second);
         std::cout << "k_mer set size (not repeat element) : " << ret.first.size() << "\n";
         size_t count = 0;
@@ -101,11 +101,11 @@ namespace LSH_CPP::Test {
     }
 
     void test_min_hash() {
-        phmap::flat_hash_set<std::string_view> data1 =
+        HashSet<std::string_view> data1 =
                 {"minhash", "is", "a", "probabilistic", "data", "structure", "for",
                  "estimating", "the", "similarity", "between", "datasets"};
 
-        phmap::flat_hash_set<std::string_view> data2 =
+        HashSet<std::string_view> data2 =
                 {"minhash", "is", "a", "probability", "data", "structure", "for",
                  "estimating", "the", "similarity", "between", "documents"};
         MinHash hash1(XXStringViewHash64{});
@@ -126,14 +126,14 @@ namespace LSH_CPP::Test {
      * LSH : weights = { 0.5 , 0.5 }
      */
     void test_lsh_minhash() {
-        phmap::flat_hash_set<std::string_view> data_1 = {"minhash", "is", "a", "probabilistic", "data", "structure",
-                                                         "for", "estimating", "the", "similarity", "between",
-                                                         "datasets"};
-        phmap::flat_hash_set<std::string_view> data_2 = {"minhash", "is", "a", "probability", "data", "structure",
-                                                         "for", "estimating", "the", "similarity", "between",
-                                                         "documents"};
-        phmap::flat_hash_set<std::string_view> data_3 = {"minhash", "is", "probability", "data", "structure", "for",
-                                                         "estimating", "the", "similarity", "between", "documents"};
+        HashSet<std::string_view> data_1 = {"minhash", "is", "a", "probabilistic", "data", "structure",
+                                            "for", "estimating", "the", "similarity", "between",
+                                            "datasets"};
+        HashSet<std::string_view> data_2 = {"minhash", "is", "a", "probability", "data", "structure",
+                                            "for", "estimating", "the", "similarity", "between",
+                                            "documents"};
+        HashSet<std::string_view> data_3 = {"minhash", "is", "probability", "data", "structure", "for",
+                                            "estimating", "the", "similarity", "between", "documents"};
         MinHash m1(XXStringViewHash32{}), m2(XXStringViewHash32{}), m3(XXStringViewHash32{});
         m1.update(data_1);
         m2.update(data_2);

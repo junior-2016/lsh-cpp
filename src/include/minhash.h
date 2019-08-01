@@ -131,7 +131,8 @@ namespace LSH_CPP {
          * 下一步是考虑在当前 Weight_Jaccard_similarity 下, 如何计算 MinHash 可以使得它在概率上存在:
          * P { min_hash(A) == min_hash(B) } = Weight_Jaccard_Similarity(A,B).
          *   => 参考 Improved Consistent Sampling, Weighted Minhash and L1 Sketching
-         *   => TODO : ???
+         *  => TODO : 对于无权重(无重复)的set,不用高开销的hash_set,改用std::vector<T>(前提确保必须没有重复元素),用MinHash算法处理;
+         *            有权重(存在重复元素)的一律放到 weight_minhash 算法.
          * @tparam T 集合数据类型
          * @tparam is_weight T 是否存在 weight() 权重函数(如果存在权重函数,说明处理的集合是multiset)
          * @param val
@@ -167,7 +168,7 @@ namespace LSH_CPP {
          * @param data_set 数据集
          */
         template<bool is_weight = false, typename T>
-        void update(const phmap::flat_hash_set<T> &data_set) {
+        void update(const HashSet <T> &data_set) {
             for (const auto &data:data_set) {
                 auto value = hash_func(data);
                 size_t weight = 1; // 无权重下 weight = 1
@@ -230,7 +231,7 @@ namespace LSH_CPP {
     //        = (min(A_a,B_a)+min(A_b,B_b)+min(A_c,B_c)+min(A_d,B_d)) / (max(A_a,B_a)+max(A_b,B_b)+max(A_c,B_c)+max(A_d,B_d))
     //        = ( 2 + 2 + 0 + 0 ) / ( 3 + 3 + 1 + 1 ) = 4 / 8  = 0.5
     template<bool is_weight = false, typename T>
-    double actual_jaccard_similarity(const phmap::flat_hash_set<T> &A, const phmap::flat_hash_set<T> &B) {
+    double actual_jaccard_similarity(const HashSet <T> &A, const HashSet <T> &B) {
         double count = 0;
         for (const auto &item:A) { if (B.find(item) != B.end()) count++; }
         return count / (A.size() + B.size() - count);

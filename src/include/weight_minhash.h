@@ -20,7 +20,6 @@ namespace LSH_CPP {
     //            [2] A Review for Weighted MinHash Algorithms (2018)
     //     算法思想:
 
-
     class WeightMinHash {
 
     };

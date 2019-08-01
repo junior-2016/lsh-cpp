@@ -39,7 +39,7 @@ namespace LSH_CPP {
         // 所以实际的BandHashValueType是MinHashLabel集合
         using BandHashValueType = std::vector<MinHashLabel>;
 
-        using BandHashMap = phmap::flat_hash_map<BandHashKeyType, BandHashValueType>;
+        using BandHashMap = HashMap<BandHashKeyType, BandHashValueType>;
 
         using false_positive_weight = double;
         using false_negative_weight = double;
@@ -144,9 +144,9 @@ namespace LSH_CPP {
         }
 
         template<typename HashFunc, size_t MinHashBits, size_t Seed, typename RandomGenerator>
-        phmap::flat_hash_set<MinHashLabel> // 用hash_set做返回值是为了过滤重复的candidate.
+        HashSet <MinHashLabel> // 用hash_set做返回值是为了过滤重复的candidate.
         query(const MinHash <HashFunc, MinHashBits, n_permutation, Seed, RandomGenerator> &min_hash) {
-            phmap::flat_hash_set<MinHashLabel> candidate_set;
+            HashSet<MinHashLabel> candidate_set;
             for (size_t i = 0; i < band_hash_maps.size(); i++) {
                 auto key = bandHashFunc(min_hash.hash_values, band_hash_range[i]);
                 if (auto pos = band_hash_maps[i].find(key); pos != band_hash_maps[i].end()) {

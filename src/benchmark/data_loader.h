@@ -13,7 +13,7 @@ namespace LSH_CPP::Benchmark {
     namespace DataSpace {
         std::vector<std::string> population; // 采样池 => 变成全局变量,维持内部字符串生命周期.
         using DataLabel = std::vector<size_t>;
-        using DataSet = std::vector<phmap::flat_hash_set<std::string_view >>;
+        using DataSet = std::vector<HashSet<std::string_view >>;
         using Data = std::pair<DataSet, DataLabel>;
         std::pair<Data, Data> global_data;
         bool is_data_clear = true;
@@ -74,15 +74,15 @@ namespace LSH_CPP::Benchmark {
         for_constexpr<for_bounds<0, population_size>>([&](auto index) {
             DataSpace::population.push_back(std::to_string(index));
         });
-        DataSpace::DataSet train_set(train_set_size, phmap::flat_hash_set<std::string_view>{});
-        DataSpace::DataSet test_set(test_set_size, phmap::flat_hash_set<std::string_view>{});
+        DataSpace::DataSet train_set(train_set_size, HashSet<std::string_view>{});
+        DataSpace::DataSet test_set(test_set_size, HashSet<std::string_view>{});
         std::mt19937_64 data_size_generator(data_size_generator_seed);
         std::mt19937_64 data_sample_generator(data_sample_generator_seed);
         std::uniform_int_distribution<size_t> data_size_dis(data_size_random_range.first,
                                                             data_size_random_range.second); // [a,b]
         for (size_t i = 0; i < train_set_size; i++) {
             auto data_size = data_size_dis(data_size_generator);
-            phmap::flat_hash_set<std::string_view> temp;
+            HashSet<std::string_view> temp;
             std::sample(DataSpace::population.begin(), DataSpace::population.end(),
                         std::inserter(temp, temp.end()), data_size, data_sample_generator); // 注意set容器用std::inserter
             train_set[i] = temp;

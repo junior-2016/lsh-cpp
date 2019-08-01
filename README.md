@@ -56,3 +56,6 @@ $ ln -s libstdc++.so.6.0.26 libstdc++.so.6
     - [ ] Map reduce compute
     - [ ] data persistence (redis storage) 
     - [ ] data save/read/remove/split/merge/... feature
+    
+- [ ] Other
+    - [ ] Python interface export using pybind11
