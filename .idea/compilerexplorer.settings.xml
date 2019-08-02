@@ -7,6 +7,20 @@
         <entry>
           <key>
             <LocalCompilerPath>
+              <option name="path" value="/usr/bin/g++-9" />
+            </LocalCompilerPath>
+          </key>
+          <value>
+            <LocalCompilerSettings>
+              <option name="name" value="GCC" />
+              <option name="version" value="9.1.0" />
+              <option name="target" value="x86_64" />
+            </LocalCompilerSettings>
+          </value>
+        </entry>
+        <entry>
+          <key>
+            <LocalCompilerPath>
               <option name="path" value="/usr/bin/g++-8" />
             </LocalCompilerPath>
           </key>

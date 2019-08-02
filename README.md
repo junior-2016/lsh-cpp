@@ -8,7 +8,11 @@ the sse/avx instruction,clone [https://github.com/Mysticial/FeatureDetector.git]
 and test on your machine.
 - cmake 3.12
 - Boost
-- anaconda3(python3.7) with numpy and matplotlib installed.
+- python2.7 development headers and some packages 
+<br> On Ubuntu
+```bash
+$ sudo apt-get install python-matplotlib python-numpy python-tk python2.7-dev
+```
 - GSL(GNU Scientific Library) <br>
  You can use command 'sudo apt-get install libgsl-dev' on Ubuntu to install gsl directly.
 
@@ -58,4 +62,5 @@ $ ln -s libstdc++.so.6.0.26 libstdc++.so.6
     - [ ] data save/read/remove/split/merge/... feature
     
 - [ ] Other
+    - [ ] 代码中向量化计算的部分全部用上 Eigen-vector + Blas + simd
     - [ ] Python interface export using pybind11

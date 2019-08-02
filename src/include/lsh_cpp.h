@@ -58,6 +58,8 @@
 // Self include
 #include "config.h"
 
+namespace plt = matplotlibcpp;
+
 namespace LSH_CPP {
 
 }

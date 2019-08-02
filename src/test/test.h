@@ -8,39 +8,18 @@
 #include "../include/lsh_cpp.h"
 #include "../include/util.h"
 #include "../include/io.h"
+#include "../include/time.h"
 #include "../include/hash.h"
 #include "../include/minhash.h"
 #include "../include/lsh.h"
 #include "../include/weight_minhash.h"
 
 namespace LSH_CPP::Test {
-    using double_second = std::chrono::duration<double>;
-    using double_millisecond =  std::chrono::duration<double, std::milli>;
-
-    using TimeVar = std::chrono::high_resolution_clock::time_point;
-
-#define duration(a) double_second(a).count()
-#define timeNow() std::chrono::high_resolution_clock::now()
-
     using RANDOM_NUMBER_TYPE = uint64_t;
     const RANDOM_NUMBER_TYPE MAX_RANDOM_NUMBER = std::numeric_limits<RANDOM_NUMBER_TYPE>::max();
     const RANDOM_NUMBER_TYPE MIN_RANDOM_NUMBER = 1;
     const size_t MAX_RANDOM_ARRAY_SIZE = 10000000;
     std::vector<uint64_t> random_array;
-
-    template<typename ReturnType, typename F, typename... Args>
-    std::pair<ReturnType, double> compute_function_time(F func, Args &&... args) {
-        TimeVar t1 = timeNow();
-        ReturnType ret = func(std::forward<Args>(args)...);
-        return {ret, duration(timeNow() - t1)};
-    }
-
-    template<typename F, typename ... Args>
-    double compute_function_time(F func, Args &&... args) {
-        TimeVar t1 = timeNow();
-        func(std::forward<Args>(args)...);
-        return duration(timeNow() - t1);
-    }
 
     void init() {
         std::random_device rd;  // 将用于为随机数引擎获得种子
@@ -85,9 +64,9 @@ namespace LSH_CPP::Test {
         using std_hash_map = std::unordered_map<uint64_t, std::string>;
         using parallel_hash_map = phmap::flat_hash_map<uint64_t, std::string>;
         printf("std::unordered_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert < std_hash_map > ));
+               compute_function_time(hash_map_create_and_insert<std_hash_map>));
         printf("phmap::flat_hash_map performance: %.8f seconds\n",
-               compute_function_time(hash_map_create_and_insert < parallel_hash_map > ));
+               compute_function_time(hash_map_create_and_insert<parallel_hash_map>));
     }
 
     void test_hash() {

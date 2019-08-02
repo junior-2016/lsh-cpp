@@ -30,10 +30,8 @@ find_package(Boost REQUIRED)
 # find GSL
 find_package(GSL REQUIRED)
 
-# find anaconda python library and numpy headers
-set(PYTHON_INCLUDE_PATH "$ENV{HOME}/anaconda3/include/python3.7m")
-set(NUMPY_CONDA_INCLUDE "$ENV{HOME}/anaconda3/lib/python3.7/site-packages/numpy/core/include")
-set(PYTHON_LIBRARIES "$ENV{HOME}/anaconda3/lib/libpython3.7m.so")
+# require: sudo apt-get install python-matplotlib python-numpy python-tk python2.7-dev
+find_package(PythonLibs 2.7)
 
 # source file path
 file(GLOB Self_include_file "src/include/*.h")
@@ -56,12 +54,12 @@ if (Boost_FOUND AND GSL_FOUND)
     include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE})
     if (TEST)
         add_executable(lsh_cpp_test ${Self_include_file} ${Test_file} )
-        target_include_directories(lsh_cpp_test PRIVATE ${PYTHON_INCLUDE_PATH})
+        target_include_directories(lsh_cpp_test PRIVATE ${PYTHON_INCLUDE_DIRS})
         target_link_libraries(lsh_cpp_test ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} GSL::gsl GSL::gslcblas)
     ENDIF ()
     if (BENCHMARK)
         add_executable(lsh_cpp_benchmark ${Self_include_file} ${Benchmark_file})
-        target_include_directories(lsh_cpp_benchmark PRIVATE ${PYTHON_INCLUDE_PATH})
+        target_include_directories(lsh_cpp_benchmark PRIVATE ${PYTHON_INCLUDE_DIRS})
         target_link_libraries(lsh_cpp_benchmark ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} GSL::gsl GSL::gslcblas)
     ENDIF ()
 endif ()

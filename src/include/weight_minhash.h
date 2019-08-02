@@ -77,11 +77,11 @@ namespace LSH_CPP {
         std::vector<MinHashValueType> hash_values;
 
         explicit WeightMinHash() {
-            hash_values.reserve(sample_size);
+            hash_values.resize(sample_size);
         }
 
         // 输入一个 dim 维度的 weight_set, 计算 weight_min_hash.
-        // 每个维度上的值代表当前维度元素的权重,因为这里只处理整数权重,可以认为这个权重是当前维度元素的重复次数.
+        // 每个维度上的值代表当前维度元素的权重,比如权重类型为整型,可以认为这个权重是当前维度元素的重复次数.
         // 得到 weight_set 需要预先知道所有可能元素的个数(即全集的大小),然后给每一种元素编一个号,
         // 接着对某个带重复元素的集合A,用multi-hash-set数据结构统计A中元素的个数(或者通过hash_set统计也行,但是要把权重记录在元素类型字段里),
         // 最后根据元素在全集的编号,往 weight_set_vector 写入权重的值,不存在的元素权重记为0.
@@ -94,14 +94,19 @@ namespace LSH_CPP {
         //       当然可以写个测试代码,测试一下在全集元素是(A,T,C,G)长度为12的随机组合下,hash能不能完全不碰撞.
         //      2. 有可能出现大量全0的元素,即weight_set_vector大概率是稀疏向量,那么压缩储存就是必要的,可以用
         //      vector[(pos,weight)]记录下weight>0的部分,等于0的部分完全不用储存.
-        void update(const std::vector<size_t> &weight_set_vector) {
+        //      3. naive的实现完全没有numpy快,需要考虑完全向量化的并行计算,Eigen + blas + simd.
+        /**
+         * @tparam WeightType 可以是任意的非负数值类型
+         * @param weight_set_vector 权重集向量
+         */
+        template<typename WeightType>
+        void update(const std::vector<WeightType> &weight_set_vector) {
             assert(weight_set_vector.size() == dim);
             for (size_t i = 0; i < sample_size; i++) {
                 random_number_type ln_a_min = std::numeric_limits<random_number_type>::max();
                 size_t k_star = 0; // k*
                 random_number_type t_k_star = 0; // t_k*
                 for (size_t j = 0; j < dim && weight_set_vector[j] > 0; j++) {
-
                     random_number_type t_k = std::floor((std::log(weight_set_vector[j]) / random_sample.r_k[i][j]) +
                                                         random_sample.beta_k[i][j]);
                     random_number_type ln_y = (t_k - random_sample.beta_k[i][j]) * random_sample.r_k[i][j];
@@ -112,7 +117,7 @@ namespace LSH_CPP {
                         t_k_star = t_k;
                     }
                 }
-                hash_values.push_back({k_star, static_cast<int>(t_k_star)});
+                hash_values[i] = {k_star, static_cast<int>(t_k_star)};// 这里不用push_back,否则多次update同一个WeightMinHash会出错
             }
         }
     };
@@ -151,8 +156,9 @@ namespace LSH_CPP {
     // Generalized_Jaccard_Similarity (A,B)
     //   = (min(A_a,B_a)+min(A_b,B_b)+min(A_c,B_c)+min(A_d,B_d)) / (max(A_a,B_a)+max(A_b,B_b)+max(A_c,B_c)+max(A_d,B_d))
     //   = ( 2 + 2 + 0 + 0 ) / ( 3 + 3 + 1 + 1 ) = 4 / 8  = 0.5
-    double generalized_jaccard_similarity(const std::vector<size_t> &A_weight_set,
-                                          const std::vector<size_t> &B_weight_set) {
+    template<typename WeightType>
+    double generalized_jaccard_similarity(const std::vector<WeightType> &A_weight_set,
+                                          const std::vector<WeightType> &B_weight_set) {
         assert(A_weight_set.size() == B_weight_set.size());// dimension should be equal
         double min_ = 0, max_ = 0;
         for (size_t i = 0; i < A_weight_set.size(); i++) {
