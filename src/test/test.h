@@ -11,6 +11,7 @@
 #include "../include/hash.h"
 #include "../include/minhash.h"
 #include "../include/lsh.h"
+#include "../include/weight_minhash.h"
 
 namespace LSH_CPP::Test {
     using double_second = std::chrono::duration<double>;
@@ -115,7 +116,7 @@ namespace LSH_CPP::Test {
         hash2.update(data2);
         double time = duration(timeNow() - start);
         start = timeNow();
-        auto ret = estimated_jaccard_similarity(hash1, hash2);
+        auto ret = minhash_jaccard_similarity(hash1, hash2);
         double time_2 = duration(timeNow() - start);
         printf("similarity: %.8f ; update-time : %.8f seconds ; similarity-time %.8f \n", ret, time, time_2);
     }
@@ -138,9 +139,9 @@ namespace LSH_CPP::Test {
         m1.update(data_1);
         m2.update(data_2);
         m3.update(data_3);
-        std::cout << "(m1,m2) jaccard similarity: " << estimated_jaccard_similarity(m1, m2) << "\n";
+        std::cout << "(m1,m2) jaccard similarity: " << minhash_jaccard_similarity(m1, m2) << "\n";
         // print_minhash_table(m1, m2);
-        std::cout << "(m1,m3) jaccard similarity: " << estimated_jaccard_similarity(m1, m3) << "\n";
+        std::cout << "(m1,m3) jaccard similarity: " << minhash_jaccard_similarity(m1, m3) << "\n";
         // print_minhash_table(m1, m3);
         double threshold = 0.7;
         LSH lsh(threshold, {0.5, 0.5});
@@ -181,15 +182,26 @@ namespace LSH_CPP::Test {
         });
     }
 
+    void test_weight_minhash() {
+        std::vector<size_t> data1 = {1, 3, 4, 5, 6, 7, 8, 9, 10, 4};
+        std::vector<size_t> data2 = {2, 4, 3, 8, 4, 7, 10, 9, 0, 0};
+        WeightMinHash<10> A, B;
+        A.update(data1);
+        B.update(data2);
+        std::cout << weight_minhash_jaccard(A, B) << "\n";
+        std::cout << generalized_jaccard_similarity(data1, data2) << "\n";
+    }
+
     void test() {
         //init();
         //test_hash_map_performance();
         //test_k_mer_split();
         //test_hash();
         //test_min_hash();
-        test_lsh_minhash();
+        //test_lsh_minhash();
         //test_make_constexpr_array();
         //test_for_constexpr();
+        test_weight_minhash();
     }
 }
 #endif //LSH_CPP_TEST_H

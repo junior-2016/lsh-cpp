@@ -125,25 +125,14 @@ namespace LSH_CPP {
          * struct xxHash<K_mer> { // partial specialization for K_mer
          *     uint64_t operator()(const K_mer & k_mer) { return xx_hash<64>(k_mer.value); }
          * }
-         * 2. 如何处理带有权重的 Min Hash 计算
-         * 先考虑带有权重的 Jaccard_similarity 如何计算 ?
-         *   => 使用Generalized_jaccard_index (见minhash.h中actual_jaccard_similarity函数的注释描述)
-         * 下一步是考虑在当前 Weight_Jaccard_similarity 下, 如何计算 MinHash 可以使得它在概率上存在:
-         * P { min_hash(A) == min_hash(B) } = Weight_Jaccard_Similarity(A,B).
-         *   => 参考 Improved Consistent Sampling, Weighted Minhash and L1 Sketching
-         *  => TODO : 对于无权重(无重复)的set,不用高开销的hash_set,改用std::vector<T>(前提确保必须没有重复元素),用MinHash算法处理;
-         *            有权重(存在重复元素)的一律放到 weight_minhash 算法.
+         *
          * @tparam T 集合数据类型
          * @tparam is_weight T 是否存在 weight() 权重函数(如果存在权重函数,说明处理的集合是multiset)
          * @param val
          */
-        template<bool is_weight = false, typename T>
+        template<typename T>
         void update(const T &val) {
-            size_t weight = 1; // 无权重下 weight = 1
             auto value = hash_func(val);
-            if constexpr (is_weight) {
-                weight = val.weight();
-            }
 #ifdef USE_SIMD
             __simd_combine_fast__<xsimd::aligned_mode, n_permutation>
                     (permutation.vector_a, permutation.vector_b, hash_values, hash_values,
@@ -167,14 +156,10 @@ namespace LSH_CPP {
          * @tparam is_weight T是否存在权重函数 weight()
          * @param data_set 数据集
          */
-        template<bool is_weight = false, typename T>
+        template<typename T>
         void update(const HashSet <T> &data_set) {
             for (const auto &data:data_set) {
                 auto value = hash_func(data);
-                size_t weight = 1; // 无权重下 weight = 1
-                if constexpr (is_weight) {
-                    weight = data.weight(); // is_weight为true的前提是类型T存在weight()权重函数
-                }
 #ifdef USE_SIMD
                 // 1. 使用组合式的simd函数,这样就不需要额外创建一个result的开销了;
                 // 2. 这里假设了你的容器元素数量恰好可以被完全simd化,不会留下多余的部分,也就不需要额外提供处理函数,
@@ -205,14 +190,13 @@ namespace LSH_CPP {
 
     // 下面的 jaccard_similarity 计算公式是通过 min_hash_value_vector 估计得到的,
     // 只是从概率上和真实的jaccard_similarity相等,和真实的jaccard_similarity依然存在偏差.
-    // TODO: 考虑有权重情况下MinHash Value的Jaccard-similarity概率上是否等于有权重的集合的Jaccard_similarity
     template<typename H,
             size_t _min_hash_bits,
             size_t _n_permutation,
             size_t _Seed,
             //typename _Seed,
             typename _RandomGenerator>
-    static double estimated_jaccard_similarity
+    static double minhash_jaccard_similarity
             (const MinHash<H, _min_hash_bits, _n_permutation, _Seed, _RandomGenerator> &A,
              const MinHash<H, _min_hash_bits, _n_permutation, _Seed, _RandomGenerator> &B) {
         size_t count = 0;
@@ -223,15 +207,9 @@ namespace LSH_CPP {
         return (double) count / (double) _n_permutation;
     }
 
-    // 无权重的jaccard相似度计算: jaccard_similarity = (A intersection B) / (A union B). 使用HashSet,复杂度O(N).
-    // TODO : 有权重的jaccard相似度计算(使用Generalized Jaccard Index):
-    //    https://en.wikipedia.org/wiki/Jaccard_index#Generalized_Jaccard_similarity_and_distance Weighted Jaccard Similarity。
-    //    Example: A = { a, a, a, b, b, c } B = { a, a, b, b, b, d }
-    //    Weight_Jaccard_Similarity (A,B)
-    //        = (min(A_a,B_a)+min(A_b,B_b)+min(A_c,B_c)+min(A_d,B_d)) / (max(A_a,B_a)+max(A_b,B_b)+max(A_c,B_c)+max(A_d,B_d))
-    //        = ( 2 + 2 + 0 + 0 ) / ( 3 + 3 + 1 + 1 ) = 4 / 8  = 0.5
-    template<bool is_weight = false, typename T>
-    double actual_jaccard_similarity(const HashSet <T> &A, const HashSet <T> &B) {
+    // jaccard相似度计算(针对无权重集合): jaccard_similarity = (A intersection B) / (A union B). 使用HashSet,复杂度O(N).
+    template<typename T>
+    double jaccard_similarity(const HashSet <T> &A, const HashSet <T> &B) {
         double count = 0;
         for (const auto &item:A) { if (B.find(item) != B.end()) count++; }
         return count / (A.size() + B.size() - count);
