@@ -87,23 +87,21 @@ namespace LSH_CPP::Benchmark {
     }
 
     void weight_minhash_benchmark() {
+        namespace plt = matplotlibcpp;
         auto performance_time = detail::performance();
         auto accurate_time = detail::accurate();
         std::vector<double> x;
         for (size_t n_sample : detail::n_samples) {
             x.push_back(n_sample);
         }
-
-        plt::suptitle("Weight MinHash Benchmark");
-
-        plt::subplot(1, 2, 1);
+        plt::subplot(2, 1, 1);
         plt::plot(x, performance_time, "r-");
         plt::title("weight minhash performance benchmark");
         plt::xlabel("n_sample");
         plt::ylabel("time(ms)");
         plt::grid(true);
 
-        plt::subplot(1, 2, 2);
+        plt::subplot(2, 1, 2);
         plt::plot(x, accurate_time, "k-");
         plt::title("weight minhash accurate benchmark");
         plt::xlabel("n_sample");

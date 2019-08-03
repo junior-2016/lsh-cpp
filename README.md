@@ -62,5 +62,8 @@ $ ln -s libstdc++.so.6.0.26 libstdc++.so.6
     - [ ] data save/read/remove/split/merge/... feature
     
 - [ ] Other
-    - [ ] 代码中向量化计算的部分全部用上 Eigen-vector + Blas + simd
+    - [ ] 代码中向量化计算的部分全部用上 Eigen-vector + intel_mkl + simd,
+    移除xsimd,xsimd的部分用Eigen替代
+    - [ ] 加入对 xxhash , parallel_hash_map/set 的可选控制,
+    当用户编译不指定这些三方库时改用std:: hash和std:: unordered_map.
     - [ ] Python interface export using pybind11

@@ -18,7 +18,10 @@ namespace LSH_CPP {
     //     (有重复元素也无所谓),然后借助一个公式来计算权重.
     //     paper: [1] Improved Consistent Sampling, Weighted Minhash and L1 Sketching
     //            [2] A Review for Weighted MinHash Algorithms (2018)
-    //     算法思想:
+
+    // TODO 当前使用的 Weight MinHash 算法缺点在于无法处理流式数据,必须提前获取全集大小,
+    //  并且为了维护全集维度向量/分布采样矩阵耗费内存大(这个问题基本有解决方案,现在内存和运行时间均取决于weight>0的部分,所以已经不算是问题),
+    //  所以一个更加需要解决(扩展)的问题是: 提供一个可以处理 stream data 的 weight-minhash 算法.
 
     template<
             size_t dim,
@@ -27,6 +30,29 @@ namespace LSH_CPP {
             typename RandomGenerator = std::mt19937_64,
             typename random_number_type = float>
     struct RandomSample {
+        // TODO: 使用 (sample_size,dim) 规模的三个静态浮点矩阵储存, 空间开销过大,
+        //        考虑 (128,4^12) 大小的规模, 需要 128*4^12*3*4 / (1024*1024*1024) GB = 20多G,
+        //        而且考虑到 gamma(2,1)(范围基本在[0,7]) uniform(0,1)(范围[0,1]) 生成的浮点数都超级小,
+        //        如果遵循IEEE754标准存4个字节就太浪费空间了,需要考虑对浮点数做无损压缩.
+        //        A方案: 用 zpf Compressed C++ Arrays 储存 r_k,ln_c_k,beta_k;
+        //              用 Eigen sparse matrix(vector) 做计算.
+        //              weight_min_hash::update(std::vector<pair<index,weight>> & weights){
+        //                      Eigen::sparse_vector weight_vector <- weights;
+        //                      Eigen::sparse_vector r_k_part <- r_k.get_part_by(weights.index); // ln_ck 和 beta_k同理
+        //              }
+        //       这样就兼顾了储存(zpf压缩储存完全没有问题,因为r_k,ln_ck,beta_k都是由固定分布生成,具有规律,且数值很小,非常符合zpf压缩算法的要求)
+        //               和 运算效率(运算用Eigen稀疏矩阵/向量),
+        //       update时只取参数中对应weight>0的部分,其他weight=0的部分的参数不用取出,所以对内存开销没有多大影响.
+        //       B方案: r_k,ln_c_k,beta_k 依然用 Eigen::Sparse_matrix 储存,并提前声明维度大小(n_sample,dim),但是此时不存在任何数据,
+        //              在 update(std::vector<pair<index,weight>> & weights) 时, 检查 r_k 等矩阵在index位置是否为0,如果是,
+        //              就生成对应的参数,如果不是就跳过生成过程. 这样对不同的 weights 向量,使用的 r_k 等分布采样参数矩阵依然是相同的,
+        //              只不过是采用了动态生成方法,一点点构造出来而已,但相比原来的算法其实时间和内存开销更少,而且无需考虑浮点数压缩的问题,
+        //              除非你运行过程中提供的 weights 向量中的元素能完全覆盖整一个全集,但这种情况出现的概率极小,
+        //              因为现实数据基本是大量重复且只能构成全集的某个小的子集而已.
+        //              更重要的是, 当 r_k 等分布参数矩阵和 weighs_vector 都是 Eigen::Sparse 类型时,可以直接写矩阵向量乘法,
+        //              vectorization 优化更彻底.
+        //       从效率角度上选择B方案更好一些.因为A方案依旧需要一次性储存全部的参数(虽然压缩了但空间开销依旧很大)
+
         std::vector<std::vector<random_number_type>> r_k;
         std::vector<std::vector<random_number_type>> ln_c_k;
         std::vector<std::vector<random_number_type>> beta_k;
@@ -94,7 +120,15 @@ namespace LSH_CPP {
         //       当然可以写个测试代码,测试一下在全集元素是(A,T,C,G)长度为12的随机组合下,hash能不能完全不碰撞.
         //      2. 有可能出现大量全0的元素,即weight_set_vector大概率是稀疏向量,那么压缩储存就是必要的,可以用
         //      vector[(pos,weight)]记录下weight>0的部分,等于0的部分完全不用储存.
+        //      进一步考虑需要封装一个 sparse_vector. 或者看 Eigen 的 sparse_vector 部分能不能直接用上.
         //      3. naive的实现完全没有numpy快,需要考虑完全向量化的并行计算,Eigen + blas + simd.
+        //      Eigen可以用 min_value Array::minCoeff(row*,col*) 来实现 numpy.argmin 的效果;
+        //      但Eigen对持有nan的Array做计算是undefined的,所以这里不能将weight=0的部分变成nan,
+        //      而是考虑将weight=0的替换为float::max.
+        //      另外Eigen好像没有 Array[value==x(condition)]=new_val 的方法,可能需要自己提供 reduce 方法(参考Eigen文档的reduction部分).
+        //      现在的想法是直接用 Eigen::sparse_vector,然后提供一个[index,value]集合作为参数构造出稀疏向量,
+        //      后面的计算全是向量化的,并且也不用考虑0权重的情况了,因为后面对稀疏向量的遍历计算都是在非0值上计算.
+        //
         /**
          * @tparam WeightType 可以是任意的非负数值类型
          * @param weight_set_vector 权重集向量
