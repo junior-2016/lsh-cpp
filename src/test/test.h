@@ -164,7 +164,7 @@ namespace LSH_CPP::Test {
     void test_weight_minhash() {
         std::vector<size_t> data1 = {1, 3, 4, 5, 6, 7, 8, 9, 10, 4};
         std::vector<size_t> data2 = {2, 4, 3, 8, 4, 7, 10, 9, 0, 0};
-        WeightMinHash<10> A, B;
+        WeightMinHash<10, size_t> A, B;
         A.update(data1);
         B.update(data2);
         std::cout << weight_minhash_jaccard(A, B) << "\n";

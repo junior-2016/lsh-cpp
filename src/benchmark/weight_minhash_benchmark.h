@@ -35,7 +35,7 @@ namespace LSH_CPP::Benchmark {
             for_constexpr<for_bounds<0, n_samples.size()>>([&](auto index) {
                 constexpr auto sample = n_samples[index];
                 double time = 0;
-                WeightMinHash<dim, sample> weight_minhash;
+                WeightMinHash<dim, float, sample> weight_minhash;
                 for (size_t i = 0; i < repeat_number; i++) {
                     TimeVar start = timeNow();
                     weight_minhash.update(data[i]);
@@ -70,7 +70,7 @@ namespace LSH_CPP::Benchmark {
             for_constexpr<for_bounds<0, n_samples.size()>>([&](auto index) {
                 constexpr auto sample = n_samples[index];
                 double error = 0;
-                WeightMinHash<dim, sample> weight_minhash1, weight_minhash2;
+                WeightMinHash<dim, float, sample> weight_minhash1, weight_minhash2;
                 for (size_t i = 0; i < repeat_number; i++) {
                     weight_minhash1.update(data1[i]);
                     weight_minhash2.update(data2[i]);

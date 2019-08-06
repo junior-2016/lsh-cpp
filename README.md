@@ -1,11 +1,6 @@
 ## Require
 - g++ 8.3.0 / clang++ 8.0.1 (support C++17)
-- xsimd library \[option\]
-<br>Clone xsimd library [https://github.com/QuantStack/xsimd.git] and then
-install.
-<br>If you want to check whether your cpu support 
-the sse/avx instruction,clone [https://github.com/Mysticial/FeatureDetector.git] 
-and test on your machine.
+- Eigen3 3.3.7
 - cmake 3.12
 - Boost
 - python2.7 development headers and some packages 
