@@ -30,7 +30,7 @@ find_package(Boost REQUIRED)
 find_package(GSL REQUIRED)
 
 # require: sudo apt-get install python-matplotlib python-numpy python-tk python2.7-dev
-find_package(PythonLibs 2.7)
+find_package(PythonLibs 2.7 REQUIRED)
 
 # find eigen & intel_mkl
 find_package(Eigen3 3.3.7 REQUIRED)
