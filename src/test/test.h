@@ -171,6 +171,43 @@ namespace LSH_CPP::Test {
         std::cout << generalized_jaccard_similarity(data1, data2) << "\n";
     }
 
+    struct A {
+        using WeightType = size_t;
+        using ValueType = std::string_view;
+        ValueType _value;
+        WeightType _weight;
+
+        bool operator==(const A &a) const {
+            return _value == a._value;
+        }
+
+        [[nodiscard]] inline ValueType value() const {
+            return _value;
+        }
+
+        [[nodiscard]] inline WeightType weight() const {
+            return _weight;
+        }
+    };
+
+    void test_weight_minhash_by_set() {
+        HashSet<A> a_set = {
+                {"a", 3},
+                {"b", 2},
+                {"c", 1}
+        };
+        HashSet<A> b_set = {
+                {"a", 2},
+                {"b", 3},
+                {"d", 1}
+        };
+        std::cout << "actual jaccard similarity is : " << generalized_jaccard_similarity(a_set, b_set) << "\n";
+        WeightMinHash<200000, A> min_hash_a, min_hash_b;
+        min_hash_a.update(a_set);
+        min_hash_b.update(b_set);
+        std::cout << "weight minhash jaccard similarity is : " << weight_minhash_jaccard(min_hash_a, min_hash_b);
+    }
+
     void test() {
         //init();
         //test_hash_map_performance();
@@ -180,7 +217,16 @@ namespace LSH_CPP::Test {
         //test_lsh_minhash();
         //test_make_constexpr_array();
         //test_for_constexpr();
-        test_weight_minhash();
+        // test_weight_minhash();
+        test_weight_minhash_by_set();
     }
+}
+namespace std {
+    template<>
+    struct hash<LSH_CPP::Test::A> {
+        std::size_t operator()(LSH_CPP::Test::A const &a) const {
+            return phmap::HashState::combine(0, a._value);
+        }
+    };
 }
 #endif //LSH_CPP_TEST_H
