@@ -47,17 +47,10 @@ namespace LSH_CPP {
          * 然后通过 hash(data) and 0xFFFFFFFF 把后32位拿出来作为最后的哈希值.
          * (当然你也可以直接用64位最小哈希,并且在空间都是储存的64-bit整数)
          */
-#ifdef USE_SIMD
-        std::vector<uint64_t, XSIMD_DEFAULT_ALLOCATOR(uint64_t) > vector_a;
-
-        std::vector<uint64_t, XSIMD_DEFAULT_ALLOCATOR(uint64_t) > vector_b;
-#else
         std::vector<uint64_t> vector_a;
         std::vector<uint64_t> vector_b;
-#endif
 
         explicit RandomHashPermutation() {
-            // TODO 考虑 static_assert(n_permutation == 128 || n_permutation == 256) 而不是提供一个范围.
             static_assert(n_permutation <= max_n_permutation);
             // Seed seed;
             RandomGenerator generator(Seed);
@@ -73,22 +66,20 @@ namespace LSH_CPP {
     };
 
     /**
-     * @tparam HashFunc 将数据集的字符串哈希为整数的哈希函数,有三种选择:
-     * 1. absl::hash 它是不确定的,也就是说,它只能保证你在某次运行程序的时候,
-     * 不同的string有不同的哈希,如果你重新启动程序的时候,所有string的哈希又会重新分配一个新的了,
-     * 也就是有salt(随机因子)在Hash函数里.
-     * 2. std::hash , phmap::Hash 和 xxHash 都没有不确定性 (phmap::Hash内部用std::hash实现,所以完全没差别).
-     * 3. 性能对比:
-     * absl::Hash 略优于 xxHash (但是时间上已经非常接近),
-     * xxHash 比 phmap::Hash,std::hash 快一倍.
-     * 4. 虽然absl::Hash最优,但是由于absl::Hash的不确定性,默认还是使用 xxHash 作为字符串的哈希函数.
+     *
+     * @tparam HashFunc 将数据集合的元素(主要字符串类型,但也可以是其他类型)映射到整数的哈希函数,默认用 XXStringViewHash32,
+     * 可以在构造函数传递第一个参数来指定其他的HashFunc
+     * @tparam MinHashBits 最小哈希值的实际位数(可以是32bit或64bit,但内部储存最小哈希统一用uint64_t)
+     * @tparam n_permutation RandomHashPermutation中随机哈希函数的个数
+     * @tparam Seed RandomHashPermutation中随机数生成器的种子
+     * @tparam RandomGenerator RandomHashPermutation中的随机数生成器,默认用std::mt19937_64
      */
-    template<typename HashFunc,       // 将数据集合的元素(主要字符串类型,但也可以是其他类型)映射到整数的哈希函数
-            size_t MinHashBits = 32,  // 最小哈希值的实际位数(可以是32bit或64bit,但内部储存最小哈希统一用uint64_t)
-            size_t n_permutation = 128, // RandomHashPermutation中随机哈希函数的个数
-            size_t Seed = 1,            // RandomHashPermutation中随机数生成器的种子
+    template<typename HashFunc = XXStringViewHash32,
+            size_t MinHashBits = 32,
+            size_t n_permutation = 128,
+            size_t Seed = 1,
             //typename Seed = std::random_device,
-            typename RandomGenerator = std::mt19937_64 // RandomHashPermutation中的随机数生成器,默认用std::mt19937_64.
+            typename RandomGenerator = std::mt19937_64
     >
     class MinHash {
     public:
@@ -101,15 +92,10 @@ namespace LSH_CPP {
         HashFunc hash_func;
         static RandomHashPermutation<Seed, RandomGenerator, n_permutation> permutation;
     public:
-#ifdef USE_SIMD
-        std::vector<_hash_value_store_type, XSIMD_DEFAULT_ALLOCATOR(_hash_value_store_type) > hash_values;
-#else
         std::vector<_hash_value_store_type> hash_values;
-#endif
 
-        explicit MinHash(HashFunc &&hash_func) : hash_func(hash_func) {
+        explicit MinHash(HashFunc &&hash_func = XXStringViewHash32{}) : hash_func(hash_func) {
             static_assert((MinHashBits == 32 || MinHashBits == 64));
-            // TODO 考虑 static_assert(n_permutation == 128 || n_permutation == 256) 而不是提供一个范围.
             static_assert(n_permutation <= max_n_permutation);
             hash_values.resize(n_permutation, _max_hash_range);
         }
@@ -132,22 +118,16 @@ namespace LSH_CPP {
          */
         template<typename T>
         void update(const T &val) {
+            using Array = Eigen::Map<Eigen::Array<uint64_t, n_permutation, 1>>;
+            Array hash_values_array(hash_values.data(), n_permutation);
+            Array vector_a(permutation.vector_a.data(), n_permutation);
+            Array vector_b(permutation.vector_b.data(), n_permutation);
             auto value = hash_func(val);
-#ifdef USE_SIMD
-            __simd_combine_fast__<xsimd::aligned_mode, n_permutation>
-                    (permutation.vector_a, permutation.vector_b, hash_values, hash_values,
-                     [&](const xsimd::simd_type<uint64_t> &a,
-                         const xsimd::simd_type<uint64_t> &b,
-                         const xsimd::simd_type<uint64_t> &c) {
-                         return xsimd::min((((value) * a  + b) % mersenne_prime) & _max_hash_range, c);
-                     });
-#else
+            hash_values_array = hash_values_array.min((vector_a * value + vector_b).unaryExpr(
+                    [&](const auto x) -> uint64_t { return (x % mersenne_prime) & _max_hash_range; }));
             for (size_t i = 0; i < n_permutation; i++) {
-                uint64_t ret = ((value * permutation.vector_a[i] + permutation.vector_b[i]) % mersenne_prime) &
-                               _max_hash_range;
-                hash_values[i] = std::min(hash_values[i], ret);
+                hash_values[i] = hash_values_array(i);
             }
-#endif
         }
 
         /**
@@ -158,28 +138,21 @@ namespace LSH_CPP {
          */
         template<typename T>
         void update(const HashSet <T> &data_set) {
+            // 用 Eigen::Map<Type,Row,Col>(vector.data_pointer,size) 与已有的std::vector成员无缝对接,不用破坏原来的代码架构.
+            using Array = Eigen::Map<Eigen::Array<uint64_t, n_permutation, 1>>;
+            Array hash_values_array(hash_values.data(), n_permutation);
+            Array vector_a(permutation.vector_a.data(), n_permutation);
+            Array vector_b(permutation.vector_b.data(), n_permutation);
             for (const auto &data:data_set) {
                 auto value = hash_func(data);
-#ifdef USE_SIMD
-                // 1. 使用组合式的simd函数,这样就不需要额外创建一个result的开销了;
-                // 2. 这里假设了你的容器元素数量恰好可以被完全simd化,不会留下多余的部分,也就不需要额外提供处理函数,
-                //    如果不能满足这一点,调用__simd_combine_fast__在编译期就会察觉,编译也无法通过.
-                // 3. 对齐后的数据进行simd计算会更快些
-                __simd_combine_fast__<xsimd::aligned_mode, n_permutation>
-                        (permutation.vector_a, permutation.vector_b, hash_values, hash_values,
-                         [&](const xsimd::simd_type<uint64_t> &a,
-                             const xsimd::simd_type<uint64_t> &b,
-                             const xsimd::simd_type<uint64_t> &c) {
-                             return xsimd::min((((value) * a + b) % mersenne_prime) & _max_hash_range, c);
-                         });
-
-#else
-                for (size_t i = 0; i < n_permutation; i++) {
-                    hash_values[i] = std::min(hash_values[i],
-                                              (((value * permutation.vector_a[i] + permutation.vector_b[i]) %
-                                                mersenne_prime) & _max_hash_range));
-                }
-#endif
+                hash_values_array = hash_values_array.min((vector_a * value + vector_b).unaryExpr
+                        ([&](const auto x) -> uint64_t { return (x % mersenne_prime) & _max_hash_range; }));
+            }
+            // 将Eigen::Array的值移到已经存在的std::vector,直接赋值是最快的.
+            // 当然更快的方法是直接移动Eigen::Array的data_pointer到std::vector(O(1)时间),
+            // 但C++标准上std::vector不能实现这种功能,可能有类似string_view的std::vector_view能进行这种操作.
+            for (size_t i = 0; i < n_permutation; i++) {
+                hash_values[i] = hash_values_array(i);
             }
         }
 

@@ -96,8 +96,12 @@ namespace LSH_CPP::Test {
         double time = duration(timeNow() - start);
         start = timeNow();
         auto ret = minhash_jaccard_similarity(hash1, hash2);
+        auto sm = jaccard_similarity(data1, data2);
         double time_2 = duration(timeNow() - start);
-        printf("similarity: %.8f ; update-time : %.8f seconds ; similarity-time %.8f \n", ret, time, time_2);
+        printf("minhash similarity: %.8f \n"
+               "update-time : %.8f seconds \n"
+               "similarity-time %.8f seconds \n"
+               "actual similarity: %.8f \n", ret, time, time_2, sm);
     }
 
     /**
@@ -114,7 +118,7 @@ namespace LSH_CPP::Test {
                                             "documents"};
         HashSet<std::string_view> data_3 = {"minhash", "is", "probability", "data", "structure", "for",
                                             "estimating", "the", "similarity", "between", "documents"};
-        MinHash m1(XXStringViewHash32{}), m2(XXStringViewHash32{}), m3(XXStringViewHash32{});
+        MinHash m1, m2, m3; // use default XXStringViewHash32 hash function
         m1.update(data_1);
         m2.update(data_2);
         m3.update(data_3);
@@ -213,12 +217,12 @@ namespace LSH_CPP::Test {
         //test_hash_map_performance();
         //test_k_mer_split();
         //test_hash();
-        //test_min_hash();
-        //test_lsh_minhash();
+        test_min_hash();
+        test_lsh_minhash();
         //test_make_constexpr_array();
         //test_for_constexpr();
         // test_weight_minhash();
-        test_weight_minhash_by_set();
+        //test_weight_minhash_by_set();
     }
 }
 namespace std {
