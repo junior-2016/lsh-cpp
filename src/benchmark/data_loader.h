@@ -74,8 +74,10 @@ namespace LSH_CPP::Benchmark {
         for_constexpr<for_bounds<0, population_size>>([&](auto index) {
             DataSpace::population.push_back(std::to_string(index));
         });
-        DataSpace::DataSet train_set(train_set_size, HashSet<std::string_view>{});
-        DataSpace::DataSet test_set(test_set_size, HashSet<std::string_view>{});
+        DataSpace::DataSet train_set;
+        train_set.resize(train_set_size, HashSet<std::string_view>{});
+        DataSpace::DataSet test_set;
+        test_set.resize(test_set_size, HashSet<std::string_view>{});
         std::mt19937_64 data_size_generator(data_size_generator_seed);
         std::mt19937_64 data_sample_generator(data_sample_generator_seed);
         std::uniform_int_distribution<size_t> data_size_dis(data_size_random_range.first,
@@ -87,11 +89,11 @@ namespace LSH_CPP::Benchmark {
                         std::inserter(temp, temp.end()), data_size, data_sample_generator); // 注意set容器用std::inserter
             train_set[i] = temp;
         }
-        constexpr auto Index = make_constexpr_array(make_sequence<train_set_size>([](auto index) { return index; }));
         std::vector<size_t> train_labels, test_labels;
         train_labels.reserve(train_set_size);
-        for (auto index:Index) { train_labels.push_back(index); }
-        std::sample(Index.begin(), Index.end(), std::back_inserter(test_labels), test_set_size, data_sample_generator);
+        for (size_t i = 0; i < train_set_size; i++) { train_labels.push_back(i); }
+        std::sample(train_labels.begin(), train_labels.end(),
+                    std::back_inserter(test_labels), test_set_size, data_sample_generator);
         for (size_t i = 0; i < test_set_size; i++) {
             test_set[i] = train_set[test_labels[i]];
         }

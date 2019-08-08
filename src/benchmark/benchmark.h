@@ -11,7 +11,8 @@
 
 namespace LSH_CPP::Benchmark {
     void run_benchmark() {
-        weight_minhash_benchmark();
+        lsh_benchmark();
+        //weight_minhash_benchmark();
     }
 }
 #endif //LSH_CPP_BENCHMARK_H

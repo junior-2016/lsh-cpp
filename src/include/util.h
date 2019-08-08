@@ -191,5 +191,50 @@ namespace LSH_CPP {
                 std::forward<F>(f),
                 std::make_index_sequence<Bounds0::upper - Bounds0::lower>{});
     }
+
+    // 统计相关数据量需要的函数
+    namespace Statistic {
+        using precision_type = double;
+        using recall_type = double;
+
+        template<typename T>
+        std::pair<precision_type, recall_type> get_precision_recall(const HashSet<T> &found, const HashSet<T> &truth) {
+            double intersection = 0;
+            precision_type precision;
+            recall_type recall;
+            for (const auto &f :found) {
+                if (truth.find(f) != truth.end()) {
+                    intersection++;
+                }
+            }
+            if (found.size() == 0) {
+                precision = 0;
+            } else {
+                precision = intersection / found.size();
+            }
+            if (truth.size() == 0) {
+                recall = 1.0;
+            } else {
+                recall = intersection / truth.size();
+            }
+            if ((found.size() == 0) && (truth.size() == 0)) {
+                precision = 1.0;
+                recall = 1.0;
+            }
+            return {precision, recall};
+        }
+
+        double f_score(precision_type precision, recall_type recall) {
+            if ((precision == 0) && (recall == 0)) {
+                return 0;
+            }
+            return 2.0 / (1.0 / precision + 1.0 / recall);
+        }
+
+        double f_score(const std::pair<precision_type, recall_type> &p_r) {
+            auto[p, r] = p_r;
+            return f_score(p, r);
+        }
+    }
 }
 #endif //LSH_CPP_UTIL_H
