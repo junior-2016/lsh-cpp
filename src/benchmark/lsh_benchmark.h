@@ -8,7 +8,7 @@
 #include "../include/lsh_cpp.h"
 #include "../include/io.h"
 #include "../include/util.h"
-#include "../include/time.h"
+#include "../include/time_def.h"
 #include "../include/lsh.h"
 
 namespace LSH_CPP::Benchmark {
@@ -24,7 +24,9 @@ namespace LSH_CPP::Benchmark {
 //     权重测试: {0.0 1.0} {0.1 0.9}  {0.2 0.8} {0.3, ..} ... {1.0,0.0}
 //  TODO: 调整测试重点 : ( 测试过程固定 : Seed = 1; weight = { 0.5 0.5 } ; 使用XXStringViewHash32[好像效果更好] )
 //   =>　修改 n_permutation [128 -> 1024] 对正确率影响(兼顾效率)
-//   =>  加入 sha_1/mur_mur_hash(std::hash) 测试不同hash(32/64)的正确率及效率
+//   =>  加入 sha_1 /mur_mur_hash(std::hash)/ md5 / ... 测试不同hash(32/64)的正确率及效率
+//   =>  调整 weight 的权重,测试对正确性的影响
+//   =>  针对文档集合的 lsh benchmark : 需要考虑不同k_mer长度(即 k 的大小)对相似度的影响...
 
     using ReturnResult= std::pair<double, std::vector<HashSet<size_t >>>;
 

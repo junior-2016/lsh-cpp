@@ -6,6 +6,8 @@
 #define LSH_CPP_HASH_H
 
 #include "lsh_cpp.h"
+#include "util.h"
+#include "k_shingles.h"
 
 namespace xxh {
     // 由于 xxhash 不支持 string_view,所以我仿照它的 string 版本加入了对 string_view 的支持.
@@ -172,12 +174,12 @@ namespace LSH_CPP {
     };
 
     template<>
-    struct xx_Hash<K_mer> {
-        inline uint64_t operator()(const K_mer &k_mer) { return xxh::xxhash<64>(k_mer.value); }
+    struct xx_Hash<K_shingling> {
+        inline uint64_t operator()(const K_shingling &k_shingling) { return xxh::xxhash<64>(k_shingling._value); }
 
-        inline uint64_t operator()(const std::vector<K_mer> &) { return 0; }
+        inline uint64_t operator()(const std::vector<K_shingling> &) { return 0; }
 
-        inline uint64_t operator()(const std::vector<K_mer> &, const std::pair<size_t, size_t> &) { return 0; }
+        inline uint64_t operator()(const std::vector<K_shingling> &, const std::pair<size_t, size_t> &) { return 0; }
     };
 
     template<>
@@ -213,6 +215,9 @@ namespace LSH_CPP {
     using XXStringHash32 = hash<xx_Hash, std::string, 32>;
     using XXWStringHash64 = hash<xx_Hash, std::wstring, 64>;
     using XXWStringHash32 = hash<xx_Hash, std::wstring, 32>;
+
+    using XXKShinglingHash32 = hash<xx_Hash, K_shingling, 32>;
+    using XXKShinglingHash64 = hash<xx_Hash, K_shingling, 64>;
 
 // integer hash function
     using XXUInt64Hash64 = hash<xx_Hash, uint64_t, 64>;

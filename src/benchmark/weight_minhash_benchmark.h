@@ -7,7 +7,7 @@
 
 #include "../include/lsh_cpp.h"
 #include "../include/weight_minhash.h"
-#include "../include/time.h"
+#include "../include/time_def.h"
 
 namespace LSH_CPP::Benchmark {
     namespace detail {

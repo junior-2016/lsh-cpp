@@ -9,6 +9,7 @@
 #include "util.h"
 #include "io.h"
 #include "hash.h"
+#include "lru_cache.h"
 
 namespace LSH_CPP {
     constexpr static size_t max_n_permutation = 1024;  // permutation 最大数量.
@@ -91,6 +92,17 @@ namespace LSH_CPP {
     private:
         HashFunc hash_func;
         static RandomHashPermutation<Seed, RandomGenerator, n_permutation> permutation;
+
+        // 用 MapArray 将 std::vector 包装为 Eigen::Array,
+        // 并且所有对 MapArray 的修改都直接反映在 std::vector 的数据上.
+        using Array = Eigen::Array<uint64_t, n_permutation, 1>;
+        using MapArray = Eigen::Map<Array>;
+
+        // 对Eigen的对齐问题,见:https://eigen.tuxfamily.org/dox/group__TopicStlContainers.html
+        using Cache = lru_cache<uint64_t, Array, phmap::Hash<uint64_t>, phmap::EqualTo<uint64_t>,
+                Eigen::aligned_allocator<std::pair<const uint64_t, Array> >, phmap::flat_hash_map>;
+        static Cache cache; // 全局 lru_cache 加速 update 计算.
+
     public:
         std::vector<_hash_value_store_type> hash_values;
 
@@ -113,46 +125,45 @@ namespace LSH_CPP {
          * }
          *
          * @tparam T 集合数据类型
-         * @tparam is_weight T 是否存在 weight() 权重函数(如果存在权重函数,说明处理的集合是multiset)
-         * @param val
+         * @param val 集合元素
+         * update() 方法使用Eigen加速,需要注意一些问题:
+         * 1.用 Eigen::Map<Array<Type,Row,Col>> eigen_array(vector.data(),size)与已有的std::vector成员无缝对接,不用破坏原来的代码架构.
+         * 2.用上面的方法,如果 eigen_array 的数据被修改,那么vector内的数据也会一样被修改,不需要将eigen_array的数据再次迁移到vector上.
          */
         template<typename T>
         void update(const T &val) {
-            using Array = Eigen::Map<Eigen::Array<uint64_t, n_permutation, 1>>;
-            Array hash_values_array(hash_values.data(), n_permutation);
-            Array vector_a(permutation.vector_a.data(), n_permutation);
-            Array vector_b(permutation.vector_b.data(), n_permutation);
-            auto value = hash_func(val);
-            hash_values_array = hash_values_array.min((vector_a * value + vector_b).unaryExpr(
-                    [&](const auto x) -> uint64_t { return (x % mersenne_prime) & _max_hash_range; }));
-            for (size_t i = 0; i < n_permutation; i++) {
-                hash_values[i] = hash_values_array(i);
+            MapArray hash_values_array(hash_values.data(), n_permutation);
+            MapArray vector_a(permutation.vector_a.data(), n_permutation);
+            MapArray vector_b(permutation.vector_b.data(), n_permutation);
+            auto value = hash_func(val); // compress element(may be shingling) to integer value.
+            if (auto ret = cache.get(value); ret.has_value()) {
+                hash_values_array = hash_values_array.min(*ret);
+            } else {
+                Array temp = (vector_a * value + vector_b).unaryExpr(
+                        [&](const auto x) -> uint64_t { return (x % mersenne_prime) & _max_hash_range; });
+                cache.put(value, temp);
+                hash_values_array = hash_values_array.min(temp);
             }
         }
 
         /**
          * 兼容任意类型数据集合的MinHash计算,用法同上.不同在于这里是对一个集合对所有元素进行操作,然后更新 min_hash vector.
-         * @tparam T 集合元素类型
-         * @tparam is_weight T是否存在权重函数 weight()
-         * @param data_set 数据集
          */
         template<typename T>
-        void update(const HashSet <T> &data_set) {
-            // 用 Eigen::Map<Type,Row,Col>(vector.data_pointer,size) 与已有的std::vector成员无缝对接,不用破坏原来的代码架构.
-            using Array = Eigen::Map<Eigen::Array<uint64_t, n_permutation, 1>>;
-            Array hash_values_array(hash_values.data(), n_permutation);
-            Array vector_a(permutation.vector_a.data(), n_permutation);
-            Array vector_b(permutation.vector_b.data(), n_permutation);
+        void update(const HashSet<T> &data_set) {
+            MapArray hash_values_array(hash_values.data(), n_permutation);
+            MapArray vector_a(permutation.vector_a.data(), n_permutation);
+            MapArray vector_b(permutation.vector_b.data(), n_permutation);
             for (const auto &data:data_set) {
                 auto value = hash_func(data);
-                hash_values_array = hash_values_array.min((vector_a * value + vector_b).unaryExpr
-                        ([&](const auto x) -> uint64_t { return (x % mersenne_prime) & _max_hash_range; }));
-            }
-            // 将Eigen::Array的值移到已经存在的std::vector,直接赋值是最快的.
-            // 当然更快的方法是直接移动Eigen::Array的data_pointer到std::vector(O(1)时间),
-            // 但C++标准上std::vector不能实现这种功能,可能有类似string_view的std::vector_view能进行这种操作.
-            for (size_t i = 0; i < n_permutation; i++) {
-                hash_values[i] = hash_values_array(i);
+                if (auto ret = cache.get(value); ret.has_value()) {
+                    hash_values_array = hash_values_array.min(*ret);
+                } else {
+                    Array temp = (vector_a * value + vector_b).unaryExpr(
+                            [&](const auto x) -> uint64_t { return (x % mersenne_prime) & _max_hash_range; });
+                    cache.put(value, temp);
+                    hash_values_array = hash_values_array.min(temp);
+                }
             }
         }
 
@@ -160,6 +171,16 @@ namespace LSH_CPP {
             return n_permutation;
         }
     };
+
+    constexpr size_t max_cache_size = 5000;
+    template<typename HashFunc,
+            size_t MinHashBits,
+            size_t n_permutation,
+            size_t Seed,
+            typename RandomGenerator
+    >
+    typename MinHash<HashFunc, MinHashBits, n_permutation, Seed, RandomGenerator>::Cache
+            MinHash<HashFunc, MinHashBits, n_permutation, Seed, RandomGenerator>::cache{max_cache_size};
 
     // 下面的 jaccard_similarity 计算公式是通过 min_hash_value_vector 估计得到的,
     // 只是从概率上和真实的jaccard_similarity相等,和真实的jaccard_similarity依然存在偏差.
@@ -170,19 +191,23 @@ namespace LSH_CPP {
             //typename _Seed,
             typename _RandomGenerator>
     static double minhash_jaccard_similarity
-            (const MinHash<H, _min_hash_bits, _n_permutation, _Seed, _RandomGenerator> &A,
-             const MinHash<H, _min_hash_bits, _n_permutation, _Seed, _RandomGenerator> &B) {
-        size_t count = 0;
-        // 考虑sse向量优化
-        for (size_t i = 0; i < _n_permutation; i++) {
-            if (A.hash_values[i] == B.hash_values[i]) count++;
-        }
+            (MinHash<H, _min_hash_bits, _n_permutation, _Seed, _RandomGenerator> &A,
+             MinHash<H, _min_hash_bits, _n_permutation, _Seed, _RandomGenerator> &B) {
+        using Array = Eigen::Array<uint64_t, _n_permutation, 1>;
+        using MapArray = Eigen::Map<Array>;
+        Array one = Array::Constant(1); // TODO: one/zero 考虑编译期确定 => 基于 n_permutation 编译期计算得到.
+        Array zero = Array::Constant(0);
+        // 用 vector.data() 构造 MapArray 时要保证 data() 返回的是 T* 而不是 const T*, 因为 MapArray 可能使用带有副作用的操作.
+        // 不过这里的函数不会对 MapArray 做任何修改,所以不用担心 MapArray 影响原数据的值.
+        MapArray a_array(A.hash_values.data(), _n_permutation);
+        MapArray b_array(B.hash_values.data(), _n_permutation);
+        int count = ((a_array - b_array) == 0).select(one, zero).sum();
         return (double) count / (double) _n_permutation;
     }
 
     // jaccard相似度计算(针对无权重集合): jaccard_similarity = (A intersection B) / (A union B). 使用HashSet,复杂度O(N).
     template<typename T>
-    double jaccard_similarity(const HashSet <T> &A, const HashSet <T> &B) {
+    double jaccard_similarity(const HashSet<T> &A, const HashSet<T> &B) {
         double count = 0;
         for (const auto &item:A) { if (B.find(item) != B.end()) count++; }
         return count / (A.size() + B.size() - count);

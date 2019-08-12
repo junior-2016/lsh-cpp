@@ -18,5 +18,18 @@ namespace LSH_CPP {
         std::cout << "]" << std::endl;
     }
 
+    std::vector<std::string> get_document_from_file(const char *path) {
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            fprintf(stderr, "your file %s don't exist.\n", path);
+            std::exit(-1);
+        }
+        std::string line;
+        std::vector<std::string> data;
+        while (std::getline(file, line)) {
+            data.push_back(line);
+        }
+        return data;
+    }
 }
 #endif //LSH_CPP_IO_H

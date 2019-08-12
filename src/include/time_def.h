@@ -2,8 +2,8 @@
 // Created by junior on 2019/8/2.
 //
 
-#ifndef LSH_CPP_TIME_H
-#define LSH_CPP_TIME_H
+#ifndef LSH_CPP_TIME_DEF_H
+#define LSH_CPP_TIME_DEF_H
 
 #include "lsh_cpp.h"
 
@@ -32,4 +32,4 @@ namespace LSH_CPP {
         return duration(timeNow() - t1);
     }
 }
-#endif //LSH_CPP_TIME_H
+#endif //LSH_CPP_TIME_DEF_H

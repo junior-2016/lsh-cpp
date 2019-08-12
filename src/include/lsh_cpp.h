@@ -6,7 +6,6 @@
 #define LSH_CPP_LSH_CPP_H
 
 // Eigen include and mkl macro setting
-// TODO: 移除所有和 xsimd 相关的代码,改用 Eigen 实现向量化
 #define EIGEN_USE_MKL
 #define EIGEN_USE_MKL_ALL
 #define EIGEN_NO_DEBUG

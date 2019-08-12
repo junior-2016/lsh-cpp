@@ -52,7 +52,7 @@ set(TEST ON)
 set(BENCHMARK ON)
 
 # executable setting
-include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE} ${MKLROOT}/include ${EIGEN3_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE} ${MKLROOT}/include ${EIGEN3_INCLUDE_DIR} third-party/lru-cache/include/)
 if (TEST)
     add_executable(lsh_cpp_test ${Self_include_file} ${Test_file})
     target_include_directories(lsh_cpp_test PRIVATE ${PYTHON_INCLUDE_DIRS})

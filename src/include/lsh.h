@@ -124,11 +124,11 @@ namespace LSH_CPP {
         }
 
         template<typename HashFunc, size_t MinHashBits, size_t Seed, typename RandomGenerator>
-        std::vector<MinHashLabel>
+        HashSet <MinHashLabel>
         query_then_insert(const MinHash <HashFunc, MinHashBits, n_permutation, Seed, RandomGenerator> &min_hash,
                           const MinHashLabel &label) {
             // TODO: 检查 label 代表的数据是不是重复插入
-            std::vector<MinHashLabel> candidate_set;
+            HashSet<MinHashLabel> candidate_set;
             for (size_t i = 0; i < band_hash_maps.size(); i++) {
                 auto key = bandHashFunc(min_hash.hash_values, band_hash_range[i]);
                 if (auto pos = band_hash_maps[i].find(key); pos != band_hash_maps[i].end()) {

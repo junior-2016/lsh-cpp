@@ -8,11 +8,13 @@
 #include "../include/lsh_cpp.h"
 #include "../include/util.h"
 #include "../include/io.h"
-#include "../include/time.h"
+#include "../include/time_def.h"
+#include "../include/k_shingles.h"
 #include "../include/hash.h"
 #include "../include/minhash.h"
 #include "../include/lsh.h"
 #include "../include/weight_minhash.h"
+#include "../include/lru_cache.h"
 
 namespace LSH_CPP::Test {
     using RANDOM_NUMBER_TYPE = uint64_t;
@@ -51,7 +53,7 @@ namespace LSH_CPP::Test {
         }
         std::cout << "string size : " << s.size() << "\n";
         std::cout << "k parameter : " << k << "\n";
-        auto ret = compute_function_time<HashSet<K_mer>>(split_k_mer_fast, s, k);
+        auto ret = compute_function_time<HashSet<K_shingling>>(split_k_shingling_fast, s, k);
         printf("split_k_mer_fast: %.8f seconds\n", ret.second);
         std::cout << "k_mer set size (not repeat element) : " << ret.first.size() << "\n";
         size_t count = 0;
@@ -198,18 +200,54 @@ namespace LSH_CPP::Test {
         HashSet<A> a_set = {
                 {"a", 3},
                 {"b", 2},
-                {"c", 1}
+                {"c", 1},
+                {"e", 4},
+                {"k", 3},
+                {"p", 5},
+                {"g", 4}
         };
         HashSet<A> b_set = {
                 {"a", 2},
                 {"b", 3},
-                {"d", 1}
+                {"d", 1},
+                {"k", 5},
+                {"f", 3},
+                {"p", 2},
+                {"m", 9}
         };
+        ///////////////////////////a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p
+        std::vector<size_t> A_v = {3, 2, 1, 0, 4, 0, 4, 0, 0, 0, 3, 0, 0, 0, 0, 5, 0, 0, 0, 0};
+        std::vector<size_t> B_v = {2, 3, 0, 1, 0, 3, 0, 0, 0, 0, 5, 0, 9, 0, 0, 2, 0, 0, 0, 0};
         std::cout << "actual jaccard similarity is : " << generalized_jaccard_similarity(a_set, b_set) << "\n";
-        WeightMinHash<200000, A> min_hash_a, min_hash_b;
+        WeightMinHash<200000, A, 128> min_hash_a, min_hash_b;
         min_hash_a.update(a_set);
         min_hash_b.update(b_set);
         std::cout << "weight minhash jaccard similarity is : " << weight_minhash_jaccard(min_hash_a, min_hash_b);
+//        WeightMinHash<20, size_t> min_hash_a, min_hash_b;
+//        min_hash_a.update(A_v);
+//        min_hash_b.update(B_v);
+//        std::cout << "weight minhash jaccard similarity is : " << weight_minhash_jaccard(min_hash_a, min_hash_b);
+    }
+
+    void test_lru_cache() {
+        // 测试 lru_cache 在 Eigen Align 机制下能否工作
+        using Cache =  lru_cache<int, Eigen::Vector4i, phmap::Hash<int>, phmap::EqualTo<int>,
+                Eigen::aligned_allocator<std::pair<const int, Eigen::Vector4i> >,
+                phmap::flat_hash_map>;
+        Cache cache(10);
+        cache.put(0, Eigen::Vector4i{0, 1, 2, 3});
+        cache.put(1, Eigen::Vector4i{2, 4, 6, 8});
+        std::cout << std::boolalpha << cache.contains(0) << " " << cache.contains(1) << "\n";
+        if (auto ret = cache.get(2); ret.has_value()) {
+            std::cout << *ret << "\n";
+        } else {
+            cache.put(2, Eigen::Vector4i{5, 10, 15, 20});
+        }
+        if (auto ret = cache.get(2); ret.has_value()) {
+            std::cout << *ret << "\n";
+        } else {
+            cache.put(2, Eigen::Vector4i{5, 10, 15, 20});
+        }
     }
 
     void test() {
@@ -218,11 +256,12 @@ namespace LSH_CPP::Test {
         //test_k_mer_split();
         //test_hash();
         test_min_hash();
-        test_lsh_minhash();
+        //test_lsh_minhash();
         //test_make_constexpr_array();
         //test_for_constexpr();
-        // test_weight_minhash();
+        //test_weight_minhash();
         //test_weight_minhash_by_set();
+        //test_lru_cache();
     }
 }
 namespace std {

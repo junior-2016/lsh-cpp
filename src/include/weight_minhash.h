@@ -162,6 +162,10 @@ namespace LSH_CPP {
         }
     };
 
+    // TODO: WeightMinHash for sparse matrix/vector 的测试结果低于 dense sample matrix 的实现,
+    //       可能是稀疏采样矩阵连续取值的问题,即将所有出现元素的编码集中在了一起,
+    //       而dense的实现是先对全集元素编码后,再从采样矩阵中取值的,因此集合中出现的元素在全集取到的编码是非集中的,
+    //       对应的采样矩阵的值当然也不是集中的,所以可能随机效果更好.
     // WeightMinHash for sparse matrix/vector,用于大规模的实际文本数据
     // update 接收单一集合作为参数,内部生成权重向量:
     // 其中权重向量的元素位置编码由内部全局哈希表决定(但需要集合元素类型提供接口value()获取集合元素的实际值,集合元素的实际值也可以是任意类型);
