@@ -29,7 +29,12 @@ namespace LSH_CPP {
         while (std::getline(file, line)) {
             data.push_back(line);
         }
+        file.close();
         return data;
+    }
+
+    inline std::vector<std::string> get_document_from_file(const std::string &path) {
+        return get_document_from_file(path.c_str());
     }
 }
 #endif //LSH_CPP_IO_H

@@ -223,6 +223,22 @@ namespace LSH_CPP {
     using XXUInt64Hash64 = hash<xx_Hash, uint64_t, 64>;
     using XXUInt64Hash32 = hash<xx_Hash, uint64_t, 32>;
 
+    template<typename T>
+    struct std_Hash {
+
+    };
+
+    template<size_t k>
+    struct std_Hash<DNA_Shingling < k>> {
+        inline uint64_t operator()(const DNA_Shingling <k> &shingling) { return std::hash<DNA_Shingling<k>>{}(shingling); }
+        inline uint64_t operator()(const std::vector<DNA_Shingling<k>> &) { return 0; }
+        inline uint64_t operator()(const std::vector<DNA_Shingling<k>> &, const std::pair<size_t, size_t> &){ return 0; }
+    };
+
+    template <size_t k>
+    using StdDNAShinglingHash32 = hash<std_Hash,DNA_Shingling<k>,32>;
+    template <size_t k>
+    using StdDNAShinglingHash64 = hash<std_Hash,DNA_Shingling<k>,64>;
 //    using StdStringViewHash64 = hash<std::hash, std::string_view, 64>;
 //    using StdStringViewHash32 = hash<std::hash, std::string_view, 32>;
 

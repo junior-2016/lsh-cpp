@@ -57,7 +57,7 @@ namespace LSH_CPP::Test {
         printf("split_k_mer_fast: %.8f seconds\n", ret.second);
         std::cout << "k_mer set size (not repeat element) : " << ret.first.size() << "\n";
         size_t count = 0;
-        for (const auto &item:ret.first) { count += item.pos_list.size(); }
+        for (const auto &item:ret.first) { count += item.weight(); }
         std::cout << "k_mer set size (include repeat element) : " << count << "\n";
     }
 
@@ -250,18 +250,37 @@ namespace LSH_CPP::Test {
         }
     }
 
+    void test_dna_shingling() {
+        std::string_view dna_1 = "ATCGTATCGTATCGT", dna_2 = "ATCGTTTACGTATCGTATCG";
+        auto data1 = split_dna_shingling<5>(dna_1);
+        auto data2 = split_dna_shingling<5>(dna_2);
+        StdDNAShinglingHash64<5> hash64;
+        auto func = [&](const auto &item) {
+            std::cout << item.value().to_string()
+                      << " " << dna_shingling_decode<5>(item)
+                      // << " "<< item.weight()
+                      << " " << hash64(item) << "\n";
+        };
+        std::for_each(data1.begin(), data1.end(), std::ref(func));
+        std::cout << std::endl;
+        std::for_each(data2.begin(), data2.end(), std::ref(func));
+        std::cout << "sim:" << jaccard_similarity(data1, data2) << "\n";
+
+    }
+
     void test() {
         //init();
         //test_hash_map_performance();
         //test_k_mer_split();
         //test_hash();
-        test_min_hash();
+        //test_min_hash();
         //test_lsh_minhash();
         //test_make_constexpr_array();
         //test_for_constexpr();
         //test_weight_minhash();
         //test_weight_minhash_by_set();
         //test_lru_cache();
+        test_dna_shingling();
     }
 }
 namespace std {

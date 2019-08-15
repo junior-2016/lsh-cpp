@@ -208,9 +208,9 @@ namespace LSH_CPP {
     // jaccard相似度计算(针对无权重集合): jaccard_similarity = (A intersection B) / (A union B). 使用HashSet,复杂度O(N).
     template<typename T>
     double jaccard_similarity(const HashSet<T> &A, const HashSet<T> &B) {
-        double count = 0;
+        size_t count = 0;
         for (const auto &item:A) { if (B.find(item) != B.end()) count++; }
-        return count / (A.size() + B.size() - count);
+        return (double) count / (double) (A.size() + B.size() - count);
     }
 
     template<typename H,
