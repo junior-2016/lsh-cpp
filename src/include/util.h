@@ -53,7 +53,7 @@ namespace LSH_CPP {
         double b = parameter[0], r = parameter[1];
         return 1.0 - pow(1.0 - pow(x, r), b); // ∫ (0.0 -> threshold) 1 - (1 - s^r)^b
     }
-    
+
     // 编译期生成固定序列
     // reference: https://stackoverflow.com/questions/45940284/array-initialisation-compile-time-constexpr-sequence
     namespace detail {
@@ -146,11 +146,16 @@ namespace LSH_CPP {
             return {precision, recall};
         }
 
+        /**
+         * F1 score = (2 * precision * recall) / (precision + recall)
+         * @param precision 准确率
+         * @param recall    召回率
+         */
         double f_score(precision_type precision, recall_type recall) {
             if ((precision == 0) && (recall == 0)) {
                 return 0;
             }
-            return 2.0 / (1.0 / precision + 1.0 / recall);
+            return (2.0 * precision * recall) / (precision + recall);
         }
 
         double f_score(const std::pair<precision_type, recall_type> &p_r) {

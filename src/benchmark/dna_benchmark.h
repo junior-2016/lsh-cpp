@@ -13,10 +13,8 @@
 #include "../include/lsh.h"
 
 namespace LSH_CPP::Benchmark {
-    namespace DNA_DATA {
-        std::vector<std::string> data;
-
-        const std::string output_parent_path = "out/";
+    namespace CONFIG {
+        const char *data_path = "../../dna-data/eco.dna";
 
         /**
          * k=7 sim_threshold 取 0.5 得到一个相对适当的结果,但是取 0.6,0.7 结果急剧减少;
@@ -31,9 +29,6 @@ namespace LSH_CPP::Benchmark {
 
         constexpr size_t n_sample = 256;
 
-        using MinHashType = MinHash<StdDNAShinglingHash64<k>, 32, n_sample>;
-        using LSH_Type = LSH<XXUInt64Hash64, size_t, 0, 0, n_sample>;
-
         // 权重尽量提高 false negative weight (同时也就减少 false positive weight).
         // 即重点在于减少假阴性,这样可以最大范围得到正确的结果,就算因此引入了更多错误的结果也无所谓,
         // 因为可以进一步计算minhash的jaccard相似度来过滤错误结果.
@@ -41,16 +36,39 @@ namespace LSH_CPP::Benchmark {
         // 在 n_sample = 200 的情况下:
         //   w = {0.3,0.7}/{0.2,0.8} 时结果一样,因为参数优化下来都是r = 5; 结果文件大小 30.8 M; lsh查询加上过滤结果的时间最多也就一分钟左右;
         //   w = {0.1,0.9} 时, 参数变成 r = 4, 进一步缩小了 band 的宽度,也就是说变成 candidate set 的条件更松了,band的碰撞更多,
-        //   这样可以大幅度避免正确的结果被遗漏,但同时也需要花更长的时间来过滤.不过测了一下lsh加上过滤的时间最多两分钟,所以带来的开销并不大.
+        //   这样可以大幅度避免正确的结果被遗漏,但同时也需要花更长的时间来过滤.不过测了一下lsh加上过滤的时间大概两分钟,所以带来的开销并不大.
         //   另外,w = {0.1,0.9} 时, 结果文件 36.4 M,已经非常逼近 minhash linear scan 的结果了.
         const std::pair<double, double> weights = {0.1, 0.9};
 
-        std::vector<MinHashType> minhash_set;
+        const std::string output_parent_path = "out/";
+
+        const std::string minhash_output_filename = output_parent_path
+                                                    + "k=" + std::to_string(k)
+                                                    + ",samples=" + std::to_string(n_sample)
+                                                    + ",threshold=" + std::to_string(threshold)
+                                                    + " minhash linear scan result";
+        const std::string lsh_output_filename = output_parent_path
+                                                + "k=" + std::to_string(k)
+                                                + ",threshold=" + std::to_string(threshold)
+                                                + ",samples=" + std::to_string(n_sample)
+                                                + ",weights=[" + std::to_string(weights.first) + ","
+                                                + std::to_string(weights.second) + "],"
+                                                + " minhash lsh result";
+        const std::string ground_truth_filename = output_parent_path
+                                                  + "k=" + std::to_string(k)
+                                                  + ",threshold=" + std::to_string(threshold)
+                                                  + " ground truth result";
+    }
+    namespace DNA_DATA {
+        using namespace CONFIG;
+        std::vector<std::string> data;
+        std::vector<size_t> labels;
+
+        using MinHashType = MinHash<StdDNAShinglingHash64<k>, 32, n_sample>;
+        using LSH_Type = LSH<XXUInt64Hash64, size_t, 0, 0, n_sample>;
 
         LSH_Type lsh(threshold, weights);
-
-        std::vector<HashSet < DNA_Shingling < k>>>
-        dna_shingling_sets;
+        std::vector<MinHashType> minhash_set;
     }
 
     template<size_t size>
@@ -94,7 +112,7 @@ namespace LSH_CPP::Benchmark {
 
         explicit File(const std::string &filename) : out(filename, std::ios::binary) {}
 
-        // 接受任意大小的整数参数,但是实际写入的范围取决于 IntegerType.
+        // 接受任意类型的整数参数,但实际写入的类型取决于 IntegerType.
         template<typename NumberType>
         void write(NumberType number) {
             out.write(reinterpret_cast<char *>(&number), sizeof(IntegerType));
@@ -133,92 +151,44 @@ namespace LSH_CPP::Benchmark {
         }
     };
 
-    /**
-     * min hash size : 47910
-     * exist sim count : 14460
-     * max_sim_count : 7043
-     */
     void minhash_linear_scan_query() {
         std::cout << "run minhash linear scan ...\n";
         using namespace DNA_DATA;
-        std::string output_file_name = output_parent_path
-                                       + "k=" + std::to_string(k)
-                                       + ",samples=" + std::to_string(n_sample)
-                                       + ",threshold=" + std::to_string(threshold)
-                                       + " minhash linear scan result";
-        File<FileIO::Write, 16> out(output_file_name);
-//        int exist_sim = 0;
-//        size_t max_sim_count = 0;
+        File<FileIO::Write, 16> out(minhash_output_filename);
         TimeVar start = timeNow();
-        for (size_t i = 1; i < minhash_set.size(); i++) {
-//            std::cout << i << "...\n";
+        for (size_t i = 1; i < labels.size(); i++) {
             std::vector<size_t> temp;
             for (size_t j = 0; j < i; j++) {
-                double sim = minhash_jaccard_similarity(minhash_set[i], minhash_set[j]);
+                double sim = minhash_jaccard_similarity(minhash_set[labels[i]], minhash_set[labels[j]]);
                 if (sim >= threshold) {
-                    temp.push_back(j);
+                    temp.push_back(labels[j]);
                 }
             }
-            out.write(i);
+            out.write(labels[i]);
             out.write(temp.size());
             for (auto &item:temp) { out.write(item); }
-//            max_sim_count = std::max(max_sim_count, temp.size());
-//            if (!temp.empty()) exist_sim++;
         }
         std::cout << "time : " << second_duration((timeNow() - start)) << "seconds\n";
-        out.close();
-//        std::cout << "min hash size : " << minhash_set.size() << "\n";
-//        std::cout << "exist sim count : " << exist_sim << "\n";
-//        std::cout << "max_sim_count : " << max_sim_count << "\n";
-    }
-
-    void ground_truth_query() {
-        using namespace DNA_DATA;
-        std::string output_file_name = output_parent_path
-                                       + "k=" + std::to_string(k)
-                                       + ",threshold=" + std::to_string(threshold)
-                                       + " ground truth result";
-        File<FileIO::Write, 16> out(output_file_name);
-        for (size_t i = 1; i < dna_shingling_sets.size(); i++) {
-            std::cout << i << "...\n";
-            std::vector<size_t> temp;
-            for (size_t j = 0; j < i; j++) {
-                double sim = jaccard_similarity(dna_shingling_sets[i], dna_shingling_sets[j]);
-                if (sim >= threshold) {
-                    temp.push_back(j);
-                }
-            }
-            out.write(i);
-            out.write(temp.size());
-            for (auto &item:temp) { out.write(item); }
-        }
         out.close();
     }
 
     void lsh_query() {
-        std::cout << "run lsh method ... \n";
         using namespace DNA_DATA;
-        std::string output_file_name = output_parent_path
-                                       + "k=" + std::to_string(k)
-                                       + ",threshold=" + std::to_string(threshold)
-                                       + ",samples=" + std::to_string(n_sample)
-                                       + ",weights=[" + std::to_string(weights.first) + ","
-                                       + std::to_string(weights.second) + "],"
-                                       + " minhash lsh result";
-        File<FileIO::Write, 16> out(output_file_name);
-        lsh.insert(minhash_set[0], 0);
+        std::cout << "run lsh method ... \n";
+        lsh.print_config();
+        File<FileIO::Write, 16> out(lsh_output_filename);
+        lsh.insert(minhash_set[labels[0]], labels[0]);
         TimeVar start = timeNow();
-        for (size_t i = 1; i < minhash_set.size(); i++) {
-            // std::cout << i << "...\n";
-            auto ret = lsh.query_then_insert(minhash_set[i], i);
+        for (size_t i = 1; i < labels.size(); i++) {
+            auto ret = lsh.query_then_insert(minhash_set[labels[i]], labels[i]);
             std::vector<size_t> temp;
-            for (const auto &item:ret) { // 对 ret 进一步过滤...
-                auto sim = minhash_jaccard_similarity(minhash_set[i], minhash_set[item]);
+            for (const auto &item:ret) { // 对 ret 进一步过滤,ret储存的已经是label
+                auto sim = minhash_jaccard_similarity(minhash_set[labels[i]], minhash_set[item]);
                 if (sim >= threshold) {
                     temp.push_back(item);
                 }
             }
-            out.write(i);
+            out.write(labels[i]);
             out.write(temp.size());
             for (auto &item:temp) { out.write(item); }
         }
@@ -230,78 +200,158 @@ namespace LSH_CPP::Benchmark {
 
     }
 
-    // 将输出文件转换为相似矩阵(用二进制保存)
-    void output_file_transfer_matrix(const std::string &input_file_name, const std::string &output_file_name) {
-        auto sim_content = get_document_from_file(input_file_name);
-        size_t n = sim_content.size() + 1;
-        std::vector<std::vector<char>> parse_content;
-        parse_content.resize(n);
-        for (size_t i = 0; i < n; i++) {
-            parse_content[i].resize(n, '0');
-        }
-        for (const auto &line:sim_content) {
-            std::istringstream iss(line);
-            std::string s;
-            iss >> s;
-            size_t start = std::stoull(s);
-            for (; iss >> s;) {
-                size_t end = std::stoull(s);
-                parse_content[start][end] = '1';
-                parse_content[end][start] = '1';
+#define TEST_GROUND_TRUTH
+
+#ifdef TEST_GROUND_TRUTH
+    std::vector<HashSet < DNA_Shingling < CONFIG::k>>>
+    dna_shingling_sets;
+
+    void ground_truth_query() {
+        using namespace DNA_DATA;
+        File<FileIO::Write, 16> out(ground_truth_filename);
+        for (size_t i = 1; i < dna_shingling_sets.size(); i++) {
+            std::vector<size_t> temp;
+            for (size_t j = 0; j < i; j++) {
+                double sim = jaccard_similarity(dna_shingling_sets[i], dna_shingling_sets[j]);
+                if (sim >= threshold) {
+                    temp.push_back(labels[j]);
+                }
             }
-        }
-        std::ofstream out(output_file_name);
-        for (auto &i : parse_content) {
-            for (auto &j : i) { out << j; }
-            out << "\n";
+            out.write(labels[i]);
+            out.write(temp.size());
+            for (auto &item:temp) { out.write(item); }
         }
         out.close();
     }
 
-    void transfer_matrix() {
-        output_file_transfer_matrix("out/k=7,samples=256,threshold=0.500000 minhash linear scan result",
-                                    "out/k=7,samples=256,threshold=0.500000 minhash linear scan matrix");
+    template<size_t sample_size, size_t random_sample_seed = 42>
+    void sample_data() {
+        using namespace DNA_DATA;
+        static_assert(sample_size > 1000, "The sample size is too small");
+        std::mt19937_64 random_generator(random_sample_seed);
+        std::vector<size_t> sample_labels;
+        for (size_t i = 0; i < data.size(); i++) labels.push_back(i);
+        std::sample(labels.begin(), labels.end(), std::back_inserter(sample_labels), sample_size, random_generator);
+        minhash_set.reserve(data.size());
+        dna_shingling_sets.reserve(sample_size);
+        size_t pos = 0;
+        for (size_t index = 0; index < sample_labels.size(); index++) {
+            while (pos <= sample_labels[index]) {
+                std::cout << "process doc " << pos << "...\n";
+                auto dna_shingling_set = split_dna_shingling<k>(data[pos]);
+                MinHashType temp(StdDNAShinglingHash64<k>{});
+                temp.update(dna_shingling_set);
+                minhash_set.push_back(temp);
+                if (pos == sample_labels[index]) {
+                    dna_shingling_sets.push_back(dna_shingling_set);
+                }
+                pos++;
+            }
+            if (index == sample_labels.size() - 1 && pos < data.size()) {
+                while (pos < data.size()) {
+                    std::cout << "process doc " << pos << "...\n";
+                    MinHashType temp(StdDNAShinglingHash64<k>{});
+                    temp.update(split_dna_shingling<k>(data[pos]));
+                    minhash_set.push_back(temp);
+                    pos++;
+                }
+            }
+        }
+        if (minhash_set.size() != data.size() || dna_shingling_sets.size() != sample_size) {
+            throw std::runtime_error("sample data process error");
+        }
+        std::swap(sample_labels, labels); // 后面query函数用到的labels都是采样的labels
     }
 
-    // TODO: 改变测试方法,将原数据集作为一个大数据集,从数据集上面随机采样10个1000大小的组成一个临时数据集,然后在上面测试
-    //      minhash(LSH)与 ground truth.
-    // TODO: 第二个优化点,储存结果文件,不要用数字字符串储存,那样太耗空间,直接储存一连串的uint16_t(最大支持65536大小)即可.
-    //  => PS: 为了可扩展至任意大小编号,应该用bitset储存.
+    void compute_f_score() {
+        std::cout << "compute f score ... \n";
+        using namespace CONFIG;
+        namespace plt = matplotlibcpp;
+        constexpr size_t Integer_size = 16;
+        using label_type = Integer<Integer_size>::type;
+        using output_t =  std::vector<HashSet<label_type >>;
+        output_t minhash_output, lsh_output, ground_truth_output;
+        File<FileIO::Read, Integer_size> minhash_output_file(minhash_output_filename);
+        File<FileIO::Read, Integer_size> lsh_output_file(lsh_output_filename);
+        File<FileIO::Read, Integer_size> ground_truth_file(ground_truth_filename);
+        auto minhash_file_data = minhash_output_file.read_data();
+        auto lsh_file_data = lsh_output_file.read_data();
+        auto ground_truth_data = ground_truth_file.read_data();
+        size_t i = 0, j = 0, m = 0;
+        while (i < minhash_file_data.size() && j < lsh_file_data.size() && m < ground_truth_data.size()) {
+            if ((minhash_file_data[i] == lsh_file_data[j]) && (minhash_file_data[i] == ground_truth_data[m])) {
+                HashSet<label_type> a, b, c;
+                size_t a_size = minhash_file_data[i + 1],
+                        b_size = lsh_file_data[j + 1],
+                        c_size = ground_truth_data[m + 1];
+                for (size_t index = 0; index < a_size; index++) a.insert(minhash_file_data[i + 1 + index]);
+                for (size_t index = 0; index < b_size; index++) b.insert(lsh_file_data[j + 1 + index]);
+                for (size_t index = 0; index < c_size; index++) c.insert(ground_truth_data[m + 1 + index]);
+                minhash_output.push_back(a);
+                lsh_output.push_back(b);
+                ground_truth_output.push_back(c);
+                i += (2 + minhash_file_data[i + 1]);
+                j += (2 + lsh_file_data[j + 1]);
+                m += (2 + ground_truth_data[m + 1]);
+            } else {
+                throw std::runtime_error("labels not match");
+            }
+        }
+        if (i != minhash_file_data.size() || j != lsh_file_data.size() || m != ground_truth_data.size()) {
+            throw std::runtime_error("labels not match finally");
+        }
+        size_t size = minhash_output.size();
+        double minhash_linear_scan_mean_f_score = 0, lsh_mean_f_score = 0;
+        std::vector<double> minhash_f_scores, lsh_f_scores, x;
+        for (size_t index = 0; index < size; index++) {
+            auto minhash_f_score = Statistic::f_score(
+                    Statistic::get_precision_recall(minhash_output[i], ground_truth_output[i]));
+            auto lsh_f_score = Statistic::f_score(
+                    Statistic::get_precision_recall(lsh_output[i], ground_truth_output[i]));
+            minhash_linear_scan_mean_f_score += minhash_f_score;
+            lsh_mean_f_score += lsh_f_score;
+            x.push_back(index);
+            minhash_f_scores.push_back(minhash_f_score);
+            lsh_f_scores.push_back(lsh_f_score);
+        }
+        std::cout << "minhash linear scan mean f score is : "
+                  << minhash_linear_scan_mean_f_score / (double) size << "\n";
+        std::cout << "lsh mean f score is : " << lsh_mean_f_score / (double) size << "\n";
+        plt::figure_size(800, 600);
+        plt::named_plot("linear_scan f score ", x, minhash_f_scores, "b-");
+        plt::named_plot("lsh f score", x, lsh_f_scores, "r-");
+        plt::ylabel("f1 score");
+        plt::legend();
+        plt::show();
+    }
+
+#endif
 
     // [minhash linear scan] 与 [lsh(weight=0.1,0.9) + 过滤] 的比较中, lsh的结果比起minhash只少了一点
     // (因为lsh后面加上了过滤处理,所以lsh结果只会比minhash少,不会比minhash多),时间上lsh减少了一半,加速效率较好.
     // (这里的时间包括了处理和写入文件的所有时间)
-
-#undef TEST_GROUND_TRUTH
-
     void dna_benchmark() {
         using namespace DNA_DATA;
-        const char *data_path = "../../dna-data/eco.dna";
         data = get_document_from_file(data_path);
 #ifdef TEST_GROUND_TRUTH
-        dna_shingling_sets.reserve(data.size());
+        sample_data<5000>();
+        minhash_linear_scan_query();
+        lsh_query();
+        ground_truth_query();
+        compute_f_score();
 #else
+        for (size_t i = 0; i < data.size(); i++) labels.push_back(i);
         minhash_set.reserve(data.size());
-        lsh.print_config();
-#endif
         int progress = 0;
         for (const auto &doc : data) {
             std::cout << "process " << ++progress << " doc...\n";
             auto dna_shingling_set = split_dna_shingling<k>(doc);
-#ifdef TEST_GROUND_TRUTH
-            dna_shingling_sets.push_back(dna_shingling_set);
-#else
             MinHashType temp(StdDNAShinglingHash64<k>{});
             temp.update(dna_shingling_set);
             minhash_set.push_back(temp);
-#endif
         }
-#ifdef TEST_GROUND_TRUTH
-        ground_truth_query();
-#else
         minhash_linear_scan_query();
         lsh_query();
-        minhash_set.clear(); // 注意 clear()
 #endif
     }
 }
