@@ -7,3 +7,6 @@
 [submodule "third-party/xxhash_cpp"]
 	path = third-party/xxhash_cpp
 	url = https://github.com/RedSpah/xxhash_cpp.git
+[submodule "third-party/streaming-percentiles"]
+	path = third-party/streaming-percentiles
+	url = https://github.com/sengelha/streaming-percentiles.git

@@ -56,6 +56,7 @@
 #include "../../third-party/parallel-hashmap/parallel_hashmap/phmap.h"
 #include "../../third-party/xxhash_cpp/xxhash/xxhash.h"
 #include "../../third-party/xxhash_cpp/xxhash/xxhash.hpp"
+#include "../../third-party/streaming-percentiles/cpp/src/include/stmpct/gk.hpp"
 
 // Self include
 #include "config.h"

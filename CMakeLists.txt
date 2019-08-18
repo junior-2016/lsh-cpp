@@ -40,6 +40,9 @@ endif ()
 message("MKLROOT = $ENV{MKLROOT}")
 set(MKLROOT "$ENV{MKLROOT}")
 
+# find stmpct include directories
+set(LIBSTMPCT_PUBLIC_HDR "third-party/streaming-percentiles/cpp/src/include/stmpct/")
+
 # source file path
 file(GLOB Self_include_file "src/include/*.h")
 file(GLOB Test_file "src/test/*.cpp" "src/test/*.h")
@@ -52,7 +55,8 @@ set(TEST ON)
 set(BENCHMARK ON)
 
 # executable setting
-include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE} ${MKLROOT}/include ${EIGEN3_INCLUDE_DIR} third-party/lru-cache/include/)
+include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE} ${MKLROOT}/include ${EIGEN3_INCLUDE_DIR}
+        ${LIBSTMPCT_PUBLIC_HDR})
 if (TEST)
     add_executable(lsh_cpp_test ${Self_include_file} ${Test_file})
     target_include_directories(lsh_cpp_test PRIVATE ${PYTHON_INCLUDE_DIRS})

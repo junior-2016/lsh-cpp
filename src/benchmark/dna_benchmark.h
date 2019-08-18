@@ -314,6 +314,7 @@ namespace LSH_CPP::Benchmark {
         using namespace DNA_DATA;
         data = get_document_from_file(data_path);
 #ifdef TEST_GROUND_TRUTH
+        // TODO: check exist output file then skip sample_data and query process.
         sample_data<1000>();
         minhash_linear_scan_query();
         lsh_query();

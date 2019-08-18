@@ -165,28 +165,21 @@ namespace LSH_CPP {
         }
 
         /**
-         * 计算一个序列的百分之p分位数.注意该函数会对外部数组进行排序,所以有副作用.
-         * reference: https://en.wikipedia.org/wiki/Percentile
-         * https://stackoverflow.com/questions/8137391/percentile-calculation
+         * 计算一个序列的百分之p分位数.使用 streaming percentiles library.
+         * reference:
+         * [1] https://en.wikipedia.org/wiki/Percentile
+         * [2] https://github.com/sengelha/streaming-percentiles
          */
-        double get_percentile(std::vector<double> &sequence, double p) {
+        double get_percentile(const std::vector<double> &sequence, double p, double epsilon = 0.1) {
             assert(0.0 <= p && p <= 1.0);
-            std::sort(sequence.begin(), sequence.end());
-            size_t N = sequence.size();
-            double n = (double) (N - 1) * p + 1;
-            // Another method: double n = (N + 1) * excelPercentile;
-            if (n == 1) return sequence[0];
-            else if (n == N) return sequence[N - 1];
-            else {
-                int k = (int) n;
-                double d = n - k;
-                return sequence[k - 1] + d * (sequence[k] - sequence[k - 1]);
-            }
+            stmpct::gk<double> g(epsilon);
+            std::for_each(sequence.begin(), sequence.end(), [&](const auto &d) { g.insert(d); });
+            return g.quantile(p);
         }
 
         // 计算一个序列的算术均值
         double get_mean(const std::vector<double> &sequence) {
-            double sum = std::accumulate(sequence.begin(), sequence.end(), 0.0);
+            double sum = std::accumulate(sequence.begin(), sequence.end(), 0.0);// 用accumulate求和争取更多的内部优化
             return sum / (double) sequence.size();
         }
     }
