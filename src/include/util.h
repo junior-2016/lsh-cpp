@@ -118,9 +118,10 @@ namespace LSH_CPP {
     namespace Statistic {
         using precision_type = double;
         using recall_type = double;
+        using precision_recall_t = std::pair<precision_type, recall_type>;
 
         template<typename T>
-        std::pair<precision_type, recall_type> get_precision_recall(const HashSet<T> &found, const HashSet<T> &truth) {
+        precision_recall_t get_precision_recall(const HashSet<T> &found, const HashSet<T> &truth) {
             double intersection = 0;
             precision_type precision;
             recall_type recall;
@@ -158,9 +159,35 @@ namespace LSH_CPP {
             return (2.0 * precision * recall) / (precision + recall);
         }
 
-        double f_score(const std::pair<precision_type, recall_type> &p_r) {
+        double f_score(const precision_recall_t &p_r) {
             auto[p, r] = p_r;
             return f_score(p, r);
+        }
+
+        /**
+         * 计算一个序列的百分之p分位数.注意该函数会对外部数组进行排序,所以有副作用.
+         * reference: https://en.wikipedia.org/wiki/Percentile
+         * https://stackoverflow.com/questions/8137391/percentile-calculation
+         */
+        double get_percentile(std::vector<double> &sequence, double p) {
+            assert(0.0 <= p && p <= 1.0);
+            std::sort(sequence.begin(), sequence.end());
+            size_t N = sequence.size();
+            double n = (double) (N - 1) * p + 1;
+            // Another method: double n = (N + 1) * excelPercentile;
+            if (n == 1) return sequence[0];
+            else if (n == N) return sequence[N - 1];
+            else {
+                int k = (int) n;
+                double d = n - k;
+                return sequence[k - 1] + d * (sequence[k] - sequence[k - 1]);
+            }
+        }
+
+        // 计算一个序列的算术均值
+        double get_mean(const std::vector<double> &sequence) {
+            double sum = std::accumulate(sequence.begin(), sequence.end(), 0.0);
+            return sum / (double) sequence.size();
         }
     }
 }

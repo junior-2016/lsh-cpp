@@ -24,8 +24,8 @@ namespace LSH_CPP::Benchmark {
          * 但是这样得到的结果不能反映太多的相似性,因为 sim threshold 低于0.5,已经不具有参考性.
          * 故而,应该在 k <=7 的范围内进行测试, 然后对于更小的k,应该使用更大的 sim threshold 来抑制结果增长.
          */
-        constexpr size_t k = 7; // k取太小的话完全没有区分度,会导致所有的都相似,而且相似度阀值0.5可能太小
-        const double threshold = 0.5;
+        constexpr size_t k = 6; // k取太小的话完全没有区分度,会导致所有的都相似,而且相似度阀值0.5可能太小
+        const double threshold = 0.8;
 
         constexpr size_t n_sample = 256;
 
@@ -259,9 +259,6 @@ namespace LSH_CPP::Benchmark {
                 }
             }
         }
-        if (minhash_set.size() != data.size() || dna_shingling_sets.size() != sample_size) {
-            throw std::runtime_error("sample data process error");
-        }
         std::swap(sample_labels, labels); // 后面query函数用到的labels都是采样的labels
     }
 
@@ -291,34 +288,21 @@ namespace LSH_CPP::Benchmark {
         process_data(minhash_file_data, minhash_output);
         process_data(lsh_file_data, lsh_output);
         process_data(ground_truth_data, ground_truth_output);
-
-        if (minhash_output.size() != lsh_output.size() || minhash_output.size() != ground_truth_output.size()) {
-            throw std::runtime_error("size not match");
-        }
-
         size_t size = minhash_output.size();
-        double minhash_linear_scan_mean_f_score = 0, lsh_mean_f_score = 0;
-        std::vector<double> minhash_f_scores, lsh_f_scores, x;
+        std::vector<double> minhash_f_scores, lsh_f_scores;
         for (size_t index = 0; index < size; index++) {
-            auto minhash_f_score = Statistic::f_score(
-                    Statistic::get_precision_recall(minhash_output[index], ground_truth_output[index]));
-            auto lsh_f_score = Statistic::f_score(
-                    Statistic::get_precision_recall(lsh_output[index], ground_truth_output[index]));
-            minhash_linear_scan_mean_f_score += minhash_f_score;
-            lsh_mean_f_score += lsh_f_score;
-            x.push_back(index);
+            auto minhash_pr = Statistic::get_precision_recall(minhash_output[index], ground_truth_output[index]);
+            auto lsh_pr = Statistic::get_precision_recall(lsh_output[index], ground_truth_output[index]);
+            auto minhash_f_score = Statistic::f_score(minhash_pr);
+            auto lsh_f_score = Statistic::f_score(lsh_pr);
             minhash_f_scores.push_back(minhash_f_score);
             lsh_f_scores.push_back(lsh_f_score);
         }
-        std::cout << "minhash linear scan mean f score is : "
-                  << minhash_linear_scan_mean_f_score / (double) size << "\n";
-        std::cout << "lsh mean f score is : " << lsh_mean_f_score / (double) size << "\n";
-        plt::figure_size(800, 600);
-        plt::named_plot("linear_scan f score ", x, minhash_f_scores, "b-");
-        plt::named_plot("lsh f score", x, lsh_f_scores, "r-");
-        plt::ylabel("f1 score");
-        plt::legend();
-        plt::show();
+        std::cout << "minhash linear scan f1 mean is : " << Statistic::get_mean(minhash_f_scores) << "\n";
+        std::cout << "lsh f1 mean is : " << Statistic::get_mean(lsh_f_scores) << "\n\n";
+        std::cout << "minhash linear scan f1 90% percentile is : "
+                  << Statistic::get_percentile(minhash_f_scores, 0.9) << "\n";
+        std::cout << "lsh f1 90% percentile is : " << Statistic::get_percentile(lsh_f_scores, 0.9) << "\n\n";
     }
 
 #endif
