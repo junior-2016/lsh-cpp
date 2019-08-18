@@ -24,8 +24,8 @@ namespace LSH_CPP::Benchmark {
          * 但是这样得到的结果不能反映太多的相似性,因为 sim threshold 低于0.5,已经不具有参考性.
          * 故而,应该在 k <=7 的范围内进行测试, 然后对于更小的k,应该使用更大的 sim threshold 来抑制结果增长.
          */
-        constexpr size_t k = 6; // k取太小的话完全没有区分度,会导致所有的都相似,而且相似度阀值0.5可能太小
-        const double threshold = 0.8;
+        constexpr size_t k = 7; // k取太小的话完全没有区分度,会导致所有的都相似,而且相似度阀值0.5可能太小
+        const double threshold = 0.5;
 
         constexpr size_t n_sample = 256;
 
@@ -129,20 +129,23 @@ namespace LSH_CPP::Benchmark {
         explicit File(const std::string &filename) : in(filename, std::ios::binary) {}
 
         std::vector<IntegerType> read_data() {
+            // get binary file size
             std::streampos file_size;
             in.seekg(0, std::ios::end);
             file_size = in.tellg();
             in.seekg(0, std::ios::beg);
-            std::vector<uint8_t> binary_data;
-            std::vector<IntegerType> data;
+
+            // read binary data
+            std::vector<unsigned char> binary_data(static_cast<size_t>(file_size)); // 注意这里需要创建file_size大小的数组
             in.read((char *) (&binary_data[0]), file_size);
-            int step = sizeof(IntegerType) / sizeof(char);
-            int pos = 0;
+
+            // change binary data to integer array.
+            std::vector<IntegerType> data;
+            size_t step = sizeof(IntegerType) / sizeof(char);
+            size_t pos = 0;
             while (pos < binary_data.size()) {
                 IntegerType temp = 0;
-                for (int i = 0; i < step; i++) {
-                    temp |= (binary_data[pos + i] << (i * 8));
-                }
+                for (size_t i = 0; i < step; i++) temp |= (binary_data[pos + i] << (i * 8));
                 data.push_back(temp);
                 pos += step;
             }
@@ -227,7 +230,6 @@ namespace LSH_CPP::Benchmark {
     template<size_t sample_size, size_t random_sample_seed = 42>
     void sample_data() {
         using namespace DNA_DATA;
-        static_assert(sample_size > 1000, "The sample size is too small");
         std::mt19937_64 random_generator(random_sample_seed);
         std::vector<size_t> sample_labels;
         for (size_t i = 0; i < data.size(); i++) labels.push_back(i);
@@ -277,37 +279,31 @@ namespace LSH_CPP::Benchmark {
         auto minhash_file_data = minhash_output_file.read_data();
         auto lsh_file_data = lsh_output_file.read_data();
         auto ground_truth_data = ground_truth_file.read_data();
-        size_t i = 0, j = 0, m = 0;
-        while (i < minhash_file_data.size() && j < lsh_file_data.size() && m < ground_truth_data.size()) {
-            if ((minhash_file_data[i] == lsh_file_data[j]) && (minhash_file_data[i] == ground_truth_data[m])) {
-                HashSet<label_type> a, b, c;
-                size_t a_size = minhash_file_data[i + 1],
-                        b_size = lsh_file_data[j + 1],
-                        c_size = ground_truth_data[m + 1];
-                for (size_t index = 0; index < a_size; index++) a.insert(minhash_file_data[i + 1 + index]);
-                for (size_t index = 0; index < b_size; index++) b.insert(lsh_file_data[j + 1 + index]);
-                for (size_t index = 0; index < c_size; index++) c.insert(ground_truth_data[m + 1 + index]);
-                minhash_output.push_back(a);
-                lsh_output.push_back(b);
-                ground_truth_output.push_back(c);
-                i += (2 + minhash_file_data[i + 1]);
-                j += (2 + lsh_file_data[j + 1]);
-                m += (2 + ground_truth_data[m + 1]);
-            } else {
-                throw std::runtime_error("labels not match");
+        auto process_data = [](const auto &data, output_t &output) -> void {
+            for (size_t i = 0; i < data.size();) {
+                HashSet<label_type> a;
+                size_t a_size = data[++i];
+                for (size_t index = 0; index < a_size; index++) a.insert(data[i + 1 + index]);
+                output.push_back(a);
+                i += (1 + a_size);
             }
+        };
+        process_data(minhash_file_data, minhash_output);
+        process_data(lsh_file_data, lsh_output);
+        process_data(ground_truth_data, ground_truth_output);
+
+        if (minhash_output.size() != lsh_output.size() || minhash_output.size() != ground_truth_output.size()) {
+            throw std::runtime_error("size not match");
         }
-        if (i != minhash_file_data.size() || j != lsh_file_data.size() || m != ground_truth_data.size()) {
-            throw std::runtime_error("labels not match finally");
-        }
+
         size_t size = minhash_output.size();
         double minhash_linear_scan_mean_f_score = 0, lsh_mean_f_score = 0;
         std::vector<double> minhash_f_scores, lsh_f_scores, x;
         for (size_t index = 0; index < size; index++) {
             auto minhash_f_score = Statistic::f_score(
-                    Statistic::get_precision_recall(minhash_output[i], ground_truth_output[i]));
+                    Statistic::get_precision_recall(minhash_output[index], ground_truth_output[index]));
             auto lsh_f_score = Statistic::f_score(
-                    Statistic::get_precision_recall(lsh_output[i], ground_truth_output[i]));
+                    Statistic::get_precision_recall(lsh_output[index], ground_truth_output[index]));
             minhash_linear_scan_mean_f_score += minhash_f_score;
             lsh_mean_f_score += lsh_f_score;
             x.push_back(index);
@@ -334,7 +330,7 @@ namespace LSH_CPP::Benchmark {
         using namespace DNA_DATA;
         data = get_document_from_file(data_path);
 #ifdef TEST_GROUND_TRUTH
-        sample_data<5000>();
+        sample_data<1000>();
         minhash_linear_scan_query();
         lsh_query();
         ground_truth_query();
