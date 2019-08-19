@@ -27,7 +27,7 @@ namespace LSH_CPP::Benchmark {
         constexpr size_t k = 6; // k取太小的话完全没有区分度,会导致所有的都相似,而且相似度阀值0.5可能太小
         const double threshold = 0.8;
 
-        constexpr size_t n_sample = 256;
+        constexpr size_t n_sample = 512; // 256;
 
         // 权重尽量提高 false negative weight (同时也就减少 false positive weight).
         // 即重点在于减少假阴性,这样可以最大范围得到正确的结果,就算因此引入了更多错误的结果也无所谓,
@@ -42,22 +42,26 @@ namespace LSH_CPP::Benchmark {
 
         const std::string output_parent_path = "out/";
 
-        const std::string minhash_output_filename = output_parent_path
-                                                    + "k=" + std::to_string(k)
-                                                    + ",samples=" + std::to_string(n_sample)
-                                                    + ",threshold=" + std::to_string(threshold)
-                                                    + " minhash linear scan result";
-        const std::string lsh_output_filename = output_parent_path
-                                                + "k=" + std::to_string(k)
-                                                + ",threshold=" + std::to_string(threshold)
-                                                + ",samples=" + std::to_string(n_sample)
-                                                + ",weights=[" + std::to_string(weights.first) + ","
-                                                + std::to_string(weights.second) + "],"
-                                                + " minhash lsh result";
-        const std::string ground_truth_filename = output_parent_path
-                                                  + "k=" + std::to_string(k)
-                                                  + ",threshold=" + std::to_string(threshold)
-                                                  + " ground truth result";
+        const std::string minhash_output_filename_prefix =
+                output_parent_path
+                + "k=" + std::to_string(k)
+                + ",threshold=" + std::to_string(threshold)
+                + ",samples=" + std::to_string(n_sample)
+                + ",method=minhash";
+        const std::string lsh_output_filename_prefix =
+                output_parent_path
+                + "k=" + std::to_string(k)
+                + ",threshold=" + std::to_string(threshold)
+                + ",samples=" + std::to_string(n_sample)
+                + ",weights=[" + std::to_string(weights.first) + "," + std::to_string(weights.second) + "]"
+                + ",method=minhash_lsh";
+        const std::string ground_truth_filename_prefix =
+                output_parent_path
+                + "k=" + std::to_string(k)
+                + ",threshold=" + std::to_string(threshold)
+                + ",method=set_jaccard_similarity";
+        const std::string binary_file_suffix = ".binary";
+        const std::string text_file_suffix = ".txt";
     }
     namespace DNA_DATA {
         using namespace CONFIG;
@@ -154,7 +158,7 @@ namespace LSH_CPP::Benchmark {
         }
     };
 
-    void minhash_linear_scan_query() {
+    void minhash_linear_scan_query(const std::string &minhash_output_filename) {
         std::cout << "run minhash linear scan ...\n";
         using namespace DNA_DATA;
         File<FileIO::Write, 16> out(minhash_output_filename);
@@ -175,7 +179,7 @@ namespace LSH_CPP::Benchmark {
         out.close();
     }
 
-    void lsh_query() {
+    void lsh_query(const std::string &lsh_output_filename) {
         using namespace DNA_DATA;
         std::cout << "run lsh method ... \n";
         lsh.print_config();
@@ -183,12 +187,12 @@ namespace LSH_CPP::Benchmark {
         lsh.insert(minhash_set[labels[0]], labels[0]);
         TimeVar start = timeNow();
         for (size_t i = 1; i < labels.size(); i++) {
-            auto ret = lsh.query_then_insert(minhash_set[labels[i]], labels[i]);
+            auto candidate_set = lsh.query_then_insert(minhash_set[labels[i]], labels[i]);
             std::vector<size_t> temp;
-            for (const auto &item:ret) { // 对 ret 进一步过滤,ret储存的已经是label
-                auto sim = minhash_jaccard_similarity(minhash_set[labels[i]], minhash_set[item]);
+            for (const auto &candidate_label:candidate_set) { // candidate set 过滤
+                auto sim = minhash_jaccard_similarity(minhash_set[labels[i]], minhash_set[candidate_label]);
                 if (sim >= threshold) {
-                    temp.push_back(item);
+                    temp.push_back(candidate_label);
                 }
             }
             out.write(labels[i]);
@@ -203,13 +207,12 @@ namespace LSH_CPP::Benchmark {
 
     }
 
-#define TEST_GROUND_TRUTH
-
-#ifdef TEST_GROUND_TRUTH
+#define SAMPLE_F1_SCORE_TEST
+#ifdef SAMPLE_F1_SCORE_TEST
     std::vector<HashSet < DNA_Shingling < CONFIG::k>>>
     dna_shingling_sets;
 
-    void ground_truth_query() {
+    void ground_truth_query(const std::string &ground_truth_filename) {
         using namespace DNA_DATA;
         File<FileIO::Write, 16> out(ground_truth_filename);
         for (size_t i = 1; i < dna_shingling_sets.size(); i++) {
@@ -262,10 +265,12 @@ namespace LSH_CPP::Benchmark {
         std::swap(sample_labels, labels); // 后面query函数用到的labels都是采样的labels
     }
 
-    void compute_f_score() {
+    void compute_f_score(const std::tuple<std::string, std::string, std::string> &filenames) {
         std::cout << "compute f score ... \n";
         using namespace CONFIG;
+        using namespace LSH_CPP::Statistic;
         namespace plt = matplotlibcpp;
+        const auto&[minhash_output_filename, lsh_output_filename, ground_truth_filename] = filenames;
         constexpr size_t Integer_size = 16;
         using label_type = Integer<Integer_size>::type;
         using output_t =  std::vector<HashSet<label_type >>;
@@ -290,19 +295,45 @@ namespace LSH_CPP::Benchmark {
         process_data(ground_truth_data, ground_truth_output);
         size_t size = minhash_output.size();
         std::vector<double> minhash_f_scores, lsh_f_scores;
+        std::string f_score_output_filename =
+                output_parent_path
+                + "k=" + std::to_string(k)
+                + ",threshold=" + std::to_string(threshold)
+                + ",samples=" + std::to_string(n_sample)
+                + ",weights=[" + std::to_string(weights.first) + "," + std::to_string(weights.second) + "]"
+                + " f1 score output" + text_file_suffix;
+        std::ofstream f_score_output(f_score_output_filename);
+        f_score_output << "minhash_precision" << std::setw(12) << "minhash_recall" << std::setw(12)
+                       << "lsh_precision" << std::setw(12) << "lsh_recall\n";
         for (size_t index = 0; index < size; index++) {
-            auto minhash_pr = Statistic::get_precision_recall(minhash_output[index], ground_truth_output[index]);
-            auto lsh_pr = Statistic::get_precision_recall(lsh_output[index], ground_truth_output[index]);
-            auto minhash_f_score = Statistic::f_score(minhash_pr);
-            auto lsh_f_score = Statistic::f_score(lsh_pr);
+            auto minhash_pr = get_precision_recall(minhash_output[index], ground_truth_output[index]);
+            auto lsh_pr = get_precision_recall(lsh_output[index], ground_truth_output[index]);
+            auto minhash_f_score = f_score(minhash_pr);
+            auto lsh_f_score = f_score(lsh_pr);
             minhash_f_scores.push_back(minhash_f_score);
             lsh_f_scores.push_back(lsh_f_score);
+            f_score_output << minhash_pr.first << std::setw(12) << minhash_pr.second << std::setw(12)
+                           << lsh_pr.first << std::setw(12) << lsh_pr.second << "\n";
         }
-        std::cout << "minhash linear scan f1 mean is : " << Statistic::get_mean(minhash_f_scores) << "\n";
-        std::cout << "lsh f1 mean is : " << Statistic::get_mean(lsh_f_scores) << "\n\n";
-        std::cout << "minhash linear scan f1 90% percentile is : "
-                  << Statistic::get_percentile(minhash_f_scores, 0.9) << "\n";
-        std::cout << "lsh f1 90% percentile is : " << Statistic::get_percentile(lsh_f_scores, 0.9) << "\n\n";
+        f_score_output << "minhash f1 mean is : " << get_mean(minhash_f_scores) << "\n";
+        f_score_output << "minhash f1 90% percentile is : " << get_percentile(minhash_f_scores, 0.9) << "\n\n";
+        f_score_output << "lsh f1 mean is : " << get_mean(lsh_f_scores) << "\n";
+        f_score_output << "lsh f1 90% percentile is : " << get_percentile(lsh_f_scores, 0.9) << "\n\n";
+        f_score_output.close();
+    }
+
+    template<size_t sample_data_size>
+    void Test() {
+        using namespace CONFIG;
+        sample_data<sample_data_size>();
+        const std::string config = ",sample_data_size=" + std::to_string(sample_data_size);
+        const std::string minhash_filename = minhash_output_filename_prefix + config + binary_file_suffix;
+        const std::string lsh_filename = lsh_output_filename_prefix + config + binary_file_suffix;
+        const std::string ground_truth_filename = ground_truth_filename_prefix + config + binary_file_suffix;
+        minhash_linear_scan_query(minhash_filename);
+        lsh_query(lsh_filename);
+        ground_truth_query(ground_truth_filename);
+        compute_f_score({minhash_filename, lsh_filename, ground_truth_filename});
     }
 
 #endif
@@ -313,13 +344,8 @@ namespace LSH_CPP::Benchmark {
     void dna_benchmark() {
         using namespace DNA_DATA;
         data = get_document_from_file(data_path);
-#ifdef TEST_GROUND_TRUTH
-        // TODO: check exist output file then skip sample_data and query process.
-        sample_data<1000>();
-        minhash_linear_scan_query();
-        lsh_query();
-        ground_truth_query();
-        compute_f_score();
+#ifdef SAMPLE_F1_SCORE_TEST
+        Test<1000>();
 #else
         for (size_t i = 0; i < data.size(); i++) labels.push_back(i);
         minhash_set.reserve(data.size());
@@ -331,8 +357,8 @@ namespace LSH_CPP::Benchmark {
             temp.update(dna_shingling_set);
             minhash_set.push_back(temp);
         }
-        minhash_linear_scan_query();
-        lsh_query();
+        minhash_linear_scan_query(minhash_output_filename_prefix + binary_file_suffix);
+        lsh_query(lsh_output_filename_prefix + binary_file_suffix);
 #endif
     }
 }
