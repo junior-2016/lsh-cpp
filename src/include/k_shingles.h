@@ -86,42 +86,64 @@ namespace LSH_CPP {
      * 为处理DNA数据压缩的shingling结构体.
      * A T C G 用 two-bit 编码,内部结构体用 std::bitset
      * @tparam k k-shingling长度
+     * @tparam flag 标识是否拥有权重数据,默认无权重(no_weight)
      */
+    using WeightFlag = uint32_t;
+    constexpr static WeightFlag has_weight = 1;
+    constexpr static WeightFlag no_weight = 2;
+    template<size_t k, WeightFlag flag = no_weight>
+    struct DNA_Shingling;
+
     template<size_t k>
-    struct DNA_Shingling {
+    struct DNA_Shingling<k, no_weight> {
         static constexpr size_t bits = 2 * k; // dna k-shingling 每一个位置用2-bit编码
-        // using WeightType = uint32_t;
         using ValueType = std::bitset<bits>;
 
-        // mutable WeightType _weight;
         ValueType _value;
 
-//        DNA_Shingling(const ValueType &_value, const WeightType &_weight) : _value(_value), _weight(_weight) {}
-//
-//        [[nodiscard]] WeightType weight() const { return _weight; }
+        explicit DNA_Shingling(const ValueType &_value) : _value(_value) {}
 
         [[nodiscard]] ValueType value() const { return _value; }
 
-        bool operator==(const DNA_Shingling<k> &shingling) const {
+        bool operator==(const DNA_Shingling<k, no_weight> &shingling) const {
+            return _value == shingling._value;
+        }
+    };
+
+    template<size_t k>
+    struct DNA_Shingling<k, has_weight> {
+        static constexpr size_t bits = 2 * k; // dna k-shingling 每一个位置用2-bit编码
+        using WeightType = uint32_t;
+        using ValueType = std::bitset<bits>;
+
+        mutable WeightType _weight;
+        ValueType _value;
+
+        DNA_Shingling(const ValueType &_value, const WeightType &_weight) : _value(_value), _weight(_weight) {}
+
+        [[nodiscard]] ValueType value() const { return _value; }
+
+        [[nodiscard]] WeightType weight() const { return _weight; }
+
+        bool operator==(const DNA_Shingling<k, has_weight> &shingling) const {
             return _value == shingling._value;
         }
     };
 
     // dna_shingling 编码压缩
-    template<size_t k>
-    typename DNA_Shingling<k>::ValueType dna_shingling_encode(const std::string_view &dna_shingling) {
-        using ValueType = typename DNA_Shingling<k>::ValueType;
+    template<size_t k, WeightFlag flag>
+    typename DNA_Shingling<k, flag>::ValueType dna_shingling_encode(const std::string_view &dna_shingling) {
+        using ValueType = typename DNA_Shingling<k, flag>::ValueType;
 
         // std::bitset 初始时全0, bitset::set(pos,true/false)中pos是从右边最低位开始,
         // 比如 bitset<5> temp; temp.set(0,true); => temp.to_string() == "00001"
         ValueType value;
 
-        size_t pos = DNA_Shingling<k>::bits - 1; // 从最高位开始
+        size_t pos = DNA_Shingling<k, flag>::bits - 1; // 从最高位开始
         for (const auto &ch: dna_shingling) {
             switch (ch) {
                 case 'A': // 00,不用设置1,但需要修改pos
-                    pos--;
-                    pos--;
+                    pos -= 2;
                     break;
                 case 'T': // 01
                     pos--;
@@ -135,7 +157,7 @@ namespace LSH_CPP {
                     value.set(pos--, 1);
                     value.set(pos--, 1);
                     break;
-                default: // TODO 如果不在 A/T/C/G 四个字符范围,可能需要考虑抛出异常(但是会影响性能)
+                default:
                     break;
             }
         }
@@ -144,8 +166,8 @@ namespace LSH_CPP {
 
     // 注意,如果源字符串长度小于k,比如 str = AAAT, k = 5, 那么编码的时候依然会按 k = 5 编码为 00_00_00_01_00, 解码的时候就变成 AAATA.
     // 要解决这个问题需要多引入一个member表示字符串的真正长度,但考虑到极大多数的dna都非常长,并且长度远大于k,所以这里不考虑这个问题.
-    template<size_t k>
-    std::string dna_shingling_decode(const DNA_Shingling<k> &shingling) {
+    template<size_t k, WeightFlag flag>
+    std::string dna_shingling_decode(const DNA_Shingling<k, flag> &shingling) {
         std::string dna;
         int pos = shingling.bits - 1; // 注意这里pos用int类型,否则下面的while会死循环.
         auto value = shingling.value();
@@ -160,18 +182,24 @@ namespace LSH_CPP {
         return dna;
     }
 
-    template<size_t k>
-    HashSet <DNA_Shingling<k>> split_dna_shingling(const std::string_view &string) {
+    template<size_t k, WeightFlag flag>
+    HashSet <DNA_Shingling<k, flag>> split_dna_shingling(const std::string_view &string) {
         if (k >= string.size()) {
-//            return {DNA_Shingling<k>{dna_shingling_encode<k>(string), 1}};
-            return {DNA_Shingling<k>{dna_shingling_encode<k>(string)}};
+            if constexpr (flag == has_weight) {
+                return {DNA_Shingling<k, flag>{dna_shingling_encode<k, flag>(string), 1}};
+            } else {
+                return {DNA_Shingling<k, flag>{dna_shingling_encode<k, flag>(string)}};
+            }
         }
         size_t N = string.size() - k + 1;
-        HashSet<DNA_Shingling<k>> result;
+        HashSet<DNA_Shingling<k, flag>> result;
         for (size_t i = 0; i < N; i++) {
             auto substr = string.substr(i, k);
-//            (*(result.insert(DNA_Shingling<k>{dna_shingling_encode<k>(substr), 0})).first)._weight++;
-            result.insert(DNA_Shingling<k>{dna_shingling_encode<k>(substr)});
+            if constexpr (flag == has_weight) {
+                (*(result.insert(DNA_Shingling<k, flag>{dna_shingling_encode<k, flag>(substr), 0})).first)._weight++;
+            } else {
+                result.insert(DNA_Shingling<k, flag>{dna_shingling_encode<k, flag>(substr)});
+            }
         }
         return result;
     }
@@ -185,9 +213,9 @@ namespace std {
         }
     };
 
-    template<size_t k>
-    struct hash<LSH_CPP::DNA_Shingling<k>> {
-        std::size_t operator()(LSH_CPP::DNA_Shingling<k> const &dna_shingling) const {
+    template<size_t k, LSH_CPP::WeightFlag flag>
+    struct hash<LSH_CPP::DNA_Shingling<k, flag>> {
+        std::size_t operator()(LSH_CPP::DNA_Shingling<k, flag> const &dna_shingling) const {
             return phmap::HashState::combine(0, dna_shingling._value);
         }
     };

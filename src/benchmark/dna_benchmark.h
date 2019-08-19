@@ -25,9 +25,9 @@ namespace LSH_CPP::Benchmark {
          * 故而,应该在 k <=7 的范围内进行测试, 然后对于更小的k,应该使用更大的 sim threshold 来抑制结果增长.
          */
         constexpr size_t k = 6; // k取太小的话完全没有区分度,会导致所有的都相似,而且相似度阀值0.5可能太小
-        const double threshold = 0.8;
+        const double threshold = 0.9;
 
-        constexpr size_t n_sample = 512; // 256;
+        constexpr size_t n_sample = 512;
 
         // 权重尽量提高 false negative weight (同时也就减少 false positive weight).
         // 即重点在于减少假阴性,这样可以最大范围得到正确的结果,就算因此引入了更多错误的结果也无所谓,
@@ -122,6 +122,12 @@ namespace LSH_CPP::Benchmark {
             out.write(reinterpret_cast<char *>(&number), sizeof(IntegerType));
         }
 
+        // TODO: 考虑到 IO 速度瓶颈,应该设计成批量数据写入,而不是一个个Number写入....
+        template<typename NumberType>
+        void write(NumberType *number_data) {
+
+        }
+
         void close() { out.close(); }
     };
 
@@ -209,7 +215,7 @@ namespace LSH_CPP::Benchmark {
 
 #define SAMPLE_F1_SCORE_TEST
 #ifdef SAMPLE_F1_SCORE_TEST
-    std::vector<HashSet < DNA_Shingling < CONFIG::k>>>
+    std::vector<HashSet < DNA_Shingling < CONFIG::k, LSH_CPP::no_weight>>>
     dna_shingling_sets;
 
     void ground_truth_query(const std::string &ground_truth_filename) {
@@ -243,7 +249,7 @@ namespace LSH_CPP::Benchmark {
         for (size_t index = 0; index < sample_labels.size(); index++) {
             while (pos <= sample_labels[index]) {
                 std::cout << "process doc " << pos << "...\n";
-                auto dna_shingling_set = split_dna_shingling<k>(data[pos]);
+                auto dna_shingling_set = split_dna_shingling<k, LSH_CPP::no_weight>(data[pos]);
                 MinHashType temp(StdDNAShinglingHash64<k>{});
                 temp.update(dna_shingling_set);
                 minhash_set.push_back(temp);
@@ -256,7 +262,7 @@ namespace LSH_CPP::Benchmark {
                 while (pos < data.size()) {
                     std::cout << "process doc " << pos << "...\n";
                     MinHashType temp(StdDNAShinglingHash64<k>{});
-                    temp.update(split_dna_shingling<k>(data[pos]));
+                    temp.update(split_dna_shingling<k, LSH_CPP::no_weight>(data[pos]));
                     minhash_set.push_back(temp);
                     pos++;
                 }
@@ -352,7 +358,7 @@ namespace LSH_CPP::Benchmark {
         int progress = 0;
         for (const auto &doc : data) {
             std::cout << "process " << ++progress << " doc...\n";
-            auto dna_shingling_set = split_dna_shingling<k>(doc);
+            auto dna_shingling_set = split_dna_shingling<k, LSH_CPP::no_weight>(doc);
             MinHashType temp(StdDNAShinglingHash64<k>{});
             temp.update(dna_shingling_set);
             minhash_set.push_back(temp);
