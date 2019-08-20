@@ -195,13 +195,12 @@ namespace LSH_CPP {
              MinHash<H, _min_hash_bits, _n_permutation, _Seed, _RandomGenerator> &B) {
         using Array = Eigen::Array<uint64_t, _n_permutation, 1>;
         using MapArray = Eigen::Map<Array>;
-        Array one = Array::Constant(1); // TODO: one/zero 考虑编译期确定 => 基于 n_permutation 编译期计算得到.
-        Array zero = Array::Constant(0);
         // 用 vector.data() 构造 MapArray 时要保证 data() 返回的是 T* 而不是 const T*, 因为 MapArray 可能使用带有副作用的操作.
         // 不过这里的函数不会对 MapArray 做任何修改,所以不用担心 MapArray 影响原数据的值.
         MapArray a_array(A.hash_values.data(), _n_permutation);
         MapArray b_array(B.hash_values.data(), _n_permutation);
-        int count = ((a_array - b_array) == 0).select(one, zero).sum();
+        int count = ((a_array - b_array) == 0).select(one_eigen_array<uint64_t, _n_permutation>,
+                                                      zero_eigen_array<uint64_t, _n_permutation>).sum();
         return (double) count / (double) _n_permutation;
     }
 
@@ -209,7 +208,7 @@ namespace LSH_CPP {
     template<typename T>
     double jaccard_similarity(const HashSet<T> &A, const HashSet<T> &B) {
         size_t count = 0;
-        for (const auto &item:A) { if (B.find(item) != B.end()) count++; }
+        for (const auto &a:A) { if (B.contains(a)) count++; }
         return (double) count / (double) (A.size() + B.size() - count);
     }
 
