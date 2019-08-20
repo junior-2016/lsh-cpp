@@ -252,12 +252,12 @@ namespace LSH_CPP::Test {
 
     void test_dna_shingling() {
         std::string_view dna_1 = "ATCGTATCGTATCGT", dna_2 = "ATCGTTTACGTATCGTATCG";
-        auto data1 = split_dna_shingling<5>(dna_1);
-        auto data2 = split_dna_shingling<5>(dna_2);
+        auto data1 = split_dna_shingling<5, no_weight>(dna_1);
+        auto data2 = split_dna_shingling<5, no_weight>(dna_2);
         StdDNAShinglingHash64<5> hash64;
         auto func = [&](const auto &item) {
             std::cout << item.value().to_string()
-                      << " " << dna_shingling_decode<5>(item)
+                      << " " << dna_shingling_decode<5, no_weight>(item)
                       // << " "<< item.weight()
                       << " " << hash64(item) << "\n";
         };
