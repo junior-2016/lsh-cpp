@@ -24,3 +24,13 @@ struct Test{
    }
 }
 ```
+
+### C++17 parallelism TS
+gcc 9.1.0 基于 intel TBB 实现了C++17的并行策略题案,对于常见的std::sort,
+std::for_each,std::reduce...等算法,可以提供std :: execution :: par_unseq
+来实现并行计算.<br>
+reference:<br>
+(1) [https://devblogs.microsoft.com/cppblog/using-c17-parallel-algorithms-for-better-performance/]<br>
+(2) [https://www.bfilipek.com/2017/08/cpp17-details-parallel.html]
+(3) [https://www.bfilipek.com/2018/11/parallel-alg-perf.html]
+(4) [https://en.cppreference.com/w/cpp/experimental/parallelism]

@@ -13,6 +13,7 @@
 #define EIGEN_VECTORIZE_SSE4_2
 #define EIGEN_VECTORIZE_AVX2
 #define EIGEN_VECTORIZE_FMA
+
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
@@ -39,6 +40,7 @@
 #include <chrono>
 #include <random>
 #include <limits>
+#include <execution> // C++17 parallelism TS header
 
 // C std include
 #include <cstdint>
