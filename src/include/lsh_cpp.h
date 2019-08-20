@@ -13,7 +13,6 @@
 #define EIGEN_VECTORIZE_SSE4_2
 #define EIGEN_VECTORIZE_AVX2
 #define EIGEN_VECTORIZE_FMA
-
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
