@@ -53,7 +53,6 @@ $ ./lsh_benchmark # run lsh benchmark
     
 - [ ] Other
     - [ ] 使用C++17 parallelism TS 加速部分for-loop/sort/reduce/find算法.
-    (但需要保证相关的数据结构支持并发,否则会出问题)
     - [ ] 加入对 xxhash , parallel_hash_map/set 的可选控制,
     当用户编译不指定这些三方库时改用std:: hash和std:: unordered_map.
     - [ ] Python interface export using pybind11

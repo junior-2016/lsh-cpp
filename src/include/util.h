@@ -179,7 +179,7 @@ namespace LSH_CPP {
 
         // 计算一个序列的算术均值
         double get_mean(const std::vector<double> &sequence) {
-            double sum = std::accumulate(sequence.begin(), sequence.end(), 0.0);// 用accumulate求和争取更多的内部优化
+            double sum = std::reduce(std::execution::par, sequence.begin(), sequence.end()); // C++17并行求和
             return sum / (double) sequence.size();
         }
     }
