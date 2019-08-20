@@ -309,8 +309,8 @@ namespace LSH_CPP::Benchmark {
                 + ",weights=[" + std::to_string(weights.first) + "," + std::to_string(weights.second) + "]"
                 + " f1 score output" + text_file_suffix;
         std::ofstream f_score_output(f_score_output_filename);
-        f_score_output << "minhash_precision" << std::setw(12) << "minhash_recall" << std::setw(12)
-                       << "lsh_precision" << std::setw(12) << "lsh_recall\n";
+        f_score_output << "minhash_precision" << " \t " << "minhash_recall" << " \t "
+                       << "lsh_precision" << " \t " << "lsh_recall\n";
         for (size_t index = 0; index < size; index++) {
             auto minhash_pr = get_precision_recall(minhash_output[index], ground_truth_output[index]);
             auto lsh_pr = get_precision_recall(lsh_output[index], ground_truth_output[index]);

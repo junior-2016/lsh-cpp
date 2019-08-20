@@ -35,10 +35,23 @@ find_package(PythonLibs 2.7 REQUIRED)
 # find eigen & intel_mkl
 find_package(Eigen3 3.3.7 REQUIRED)
 if ("$ENV{MKLROOT}" STREQUAL "")
-    message(FATAL_ERROR "You don't hava intel mkl on your machine.")
+    message(FATAL_ERROR "You don't hava intel mkl.")
 endif ()
 message("MKLROOT = $ENV{MKLROOT}")
 set(MKLROOT "$ENV{MKLROOT}")
+
+# find intel tbb
+if ("$ENV{TBBROOT}" STREQUAL "")
+    message(FATAL_ERROR "You don't have intel tbb.")
+endif ()
+set(TBBROOT "$ENV{TBBROOT}")
+message("TBBROOT = ${TBBROOT}")
+find_library(
+        TBBLIB
+        NAMES libtbb.so.2 libtbbmalloc.so.2 libtbbmalloc_proxy.so.2 libtbb_preview.so.2
+        PATHS "${TBBROOT}/lib/intel64/gcc4.7"
+)
+message(STATUS "TBBLIB = " ${TBBLIB})
 
 # find stmpct include directories
 set(LIBSTMPCT_PUBLIC_HDR "third-party/streaming-percentiles/cpp/src/include/stmpct/")
@@ -56,11 +69,15 @@ set(BENCHMARK ON)
 
 # executable setting
 include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE} ${MKLROOT}/include ${EIGEN3_INCLUDE_DIR}
-        ${LIBSTMPCT_PUBLIC_HDR})
+        ${LIBSTMPCT_PUBLIC_HDR} ${TBBROOT}/include)
 if (TEST)
     add_executable(lsh_cpp_test ${Self_include_file} ${Test_file})
     target_include_directories(lsh_cpp_test PRIVATE ${PYTHON_INCLUDE_DIRS})
-    target_link_libraries(lsh_cpp_test ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} GSL::gsl GSL::gslcblas
+    target_link_libraries(lsh_cpp_test
+            ${TBBLIB}
+            ${Boost_LIBRARIES}
+            ${PYTHON_LIBRARIES}
+            GSL::gsl GSL::gslcblas
             ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a
             -Wl,--start-group
             ${MKLROOT}/lib/intel64/libmkl_cdft_core.a
@@ -74,7 +91,11 @@ ENDIF ()
 if (BENCHMARK)
     add_executable(lsh_cpp_benchmark ${Self_include_file} ${Benchmark_file})
     target_include_directories(lsh_cpp_benchmark PRIVATE ${PYTHON_INCLUDE_DIRS})
-    target_link_libraries(lsh_cpp_benchmark ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} GSL::gsl GSL::gslcblas
+    target_link_libraries(lsh_cpp_benchmark
+            ${TBBLIB}
+            ${Boost_LIBRARIES}
+            ${PYTHON_LIBRARIES}
+            GSL::gsl GSL::gslcblas
             ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a
             -Wl,--start-group
             ${MKLROOT}/lib/intel64/libmkl_cdft_core.a

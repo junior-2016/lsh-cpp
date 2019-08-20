@@ -34,3 +34,9 @@ reference:<br>
 (2) [https://www.bfilipek.com/2017/08/cpp17-details-parallel.html]
 (3) [https://www.bfilipek.com/2018/11/parallel-alg-perf.html]
 (4) [https://en.cppreference.com/w/cpp/experimental/parallelism]
+
+### git notes
+push local branch to remote branch with different name:
+```bash
+$ git push -u origin my_branch:remote_branch
+```
