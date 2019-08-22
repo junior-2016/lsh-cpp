@@ -172,7 +172,7 @@ namespace LSH_CPP {
         }
     };
 
-    constexpr size_t max_cache_size = 5000;
+    constexpr size_t max_cache_size = 10000;
     template<typename HashFunc,
             size_t MinHashBits,
             size_t n_permutation,

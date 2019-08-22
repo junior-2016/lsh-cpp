@@ -32,6 +32,9 @@ find_package(GSL REQUIRED)
 # require: sudo apt-get install python-matplotlib python-numpy python-tk python2.7-dev
 find_package(PythonLibs 2.7 REQUIRED)
 
+# ArchLinux OS don't link numpy headers to /usr/include/python2.7.
+set(NUMPY_INCLUDE "/usr/lib/python2.7/site-packages/numpy/core/include/")
+
 # find eigen & intel_mkl
 find_package(Eigen3 3.3.7 REQUIRED)
 if ("$ENV{MKLROOT}" STREQUAL "")
@@ -68,7 +71,7 @@ set(TEST ON)
 set(BENCHMARK ON)
 
 # executable setting
-include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_CONDA_INCLUDE} ${MKLROOT}/include ${EIGEN3_INCLUDE_DIR}
+include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_INCLUDE} ${MKLROOT}/include ${EIGEN3_INCLUDE_DIR}
         ${LIBSTMPCT_PUBLIC_HDR} ${TBBROOT}/include)
 if (TEST)
     add_executable(lsh_cpp_test ${Self_include_file} ${Test_file})
