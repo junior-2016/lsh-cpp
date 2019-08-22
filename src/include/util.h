@@ -114,6 +114,18 @@ namespace LSH_CPP {
                 std::make_index_sequence<Bounds0::upper - Bounds0::lower>{});
     }
 
+    // static fix-size eigen array declaration:
+    template<typename _Scalar, int row>
+    static const Eigen::Array<_Scalar, row, 1> one_eigen_array = Eigen::Array<_Scalar, row, 1>::Constant(1);
+    template<typename _Scalar, int row>
+    static const Eigen::Array<_Scalar, row, 1> zero_eigen_array = Eigen::Array<_Scalar, row, 1>::Constant(0);
+    template<typename _Scalar, int row>
+    static const Eigen::Array<_Scalar, row, 1> min_eigen_array =
+            Eigen::Array<_Scalar, row, 1>::Constant(std::numeric_limits<_Scalar>::min());
+    template<typename _Scalar, int row>
+    static const Eigen::Array<_Scalar, row, 1> max_eigen_array =
+            Eigen::Array<_Scalar, row, 1>::Constant(std::numeric_limits<_Scalar>::max());
+
     // 统计相关数据量需要的函数
     namespace Statistic {
         using precision_type = double;
@@ -179,7 +191,7 @@ namespace LSH_CPP {
 
         // 计算一个序列的算术均值
         double get_mean(const std::vector<double> &sequence) {
-            double sum = std::accumulate(sequence.begin(), sequence.end(), 0.0);// 用accumulate求和争取更多的内部优化
+            double sum = std::reduce(std::execution::par, sequence.begin(), sequence.end()); // C++17并行求和
             return sum / (double) sequence.size();
         }
     }

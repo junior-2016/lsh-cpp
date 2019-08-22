@@ -1,8 +1,9 @@
 ## Require
-- g++ 8.3.0 / clang++ 8.0.1 (support C++17)
-- Eigen3 3.3.7
+- g++ 9.* (support C++17 and C++ parallelism Extension)
+- Eigen3 3.3.7 with intel mkl and intel tbb
 <br> Eigen official download [http://eigen.tuxfamily.org/index.php?title=Main_Page#Download]
 <br> To use intel mkl as eigen's backend, refer to [https://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html]
+<br> To use intel tbb as libstdc++ parallelism backend, refer to [https://github.com/intel/tbb]
 - cmake 3.12
 - Boost
 - python2.7 development headers and some packages 
@@ -51,8 +52,7 @@ $ ./lsh_benchmark # run lsh benchmark
     - [ ] data save/read/remove/split/merge/... feature
     
 - [ ] Other
-    - [x] 代码中向量化计算的部分全部用上 Eigen-vector + intel_mkl + simd,
-    移除xsimd,xsimd的部分用Eigen替代
+    - [ ] 使用C++17 parallelism TS 加速部分for-loop/sort/reduce/find算法.
     - [ ] 加入对 xxhash , parallel_hash_map/set 的可选控制,
     当用户编译不指定这些三方库时改用std:: hash和std:: unordered_map.
     - [ ] Python interface export using pybind11

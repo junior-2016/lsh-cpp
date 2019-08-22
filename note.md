@@ -24,3 +24,22 @@ struct Test{
    }
 }
 ```
+
+### C++17 parallelism TS
+gcc 9.1.0 基于 intel TBB 实现了C++17的并行策略提案, 对于常见的std::sort,
+std::for_each,std::reduce...等算法,可以提供 execution_tag(seq/par/par_unseq)
+来实现并行计算. 需要注意的是几种 execution_tag 的使用场景,要尽量避免data race.
+<br>
+reference:<br>
+(1) [https://devblogs.microsoft.com/cppblog/using-c17-parallel-algorithms-for-better-performance/]<br>
+(2) [https://www.bfilipek.com/2017/08/cpp17-details-parallel.html]<br>
+(3) [https://www.bfilipek.com/2018/11/parallel-alg-perf.html]<br>
+(4) [https://en.cppreference.com/w/cpp/experimental/parallelism]<br>
+(5) [https://en.cppreference.com/w/cpp/algorithm/execution_policy_tag_t]<br>
+(6) [https://stackoverflow.com/questions/39954678/difference-between-execution-policies-and-when-to-use-them]<br>
+
+### git notes
+push local branch to remote branch with different name:
+```bash
+$ git push -u origin my_branch:remote_branch
+```

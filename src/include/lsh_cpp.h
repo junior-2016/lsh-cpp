@@ -39,6 +39,7 @@
 #include <chrono>
 #include <random>
 #include <limits>
+#include <execution> // C++17 parallelism TS header
 
 // C std include
 #include <cstdint>

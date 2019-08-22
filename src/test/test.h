@@ -95,15 +95,11 @@ namespace LSH_CPP::Test {
         TimeVar start = timeNow();
         hash1.update(data1);
         hash2.update(data2);
-        double time = duration(timeNow() - start);
-        start = timeNow();
-        auto ret = minhash_jaccard_similarity(hash1, hash2);
+        double update_time = second_duration(timeNow() - start);
+        auto minhash_sm = minhash_jaccard_similarity(hash1, hash2);
         auto sm = jaccard_similarity(data1, data2);
-        double time_2 = duration(timeNow() - start);
-        printf("minhash similarity: %.8f \n"
-               "update-time : %.8f seconds \n"
-               "similarity-time %.8f seconds \n"
-               "actual similarity: %.8f \n", ret, time, time_2, sm);
+        printf("minhash similarity: %.8f \nactual similarity: %.8f \nupdate-time : %.8f seconds \n",
+               minhash_sm, sm, update_time);
     }
 
     /**
@@ -265,7 +261,13 @@ namespace LSH_CPP::Test {
         std::cout << std::endl;
         std::for_each(data2.begin(), data2.end(), std::ref(func));
         std::cout << "sim:" << jaccard_similarity(data1, data2) << "\n";
+    }
 
+    void test_parallel_get_mean() {
+        std::vector<double> v(10'000'007, 0.5);
+        TimeVar start = timeNow();
+        auto ret = Statistic::get_mean(v);
+        std::cout << "ret:" << ret << " time:" << millisecond_duration((timeNow() - start)) << " ms\n";
     }
 
     void test() {
@@ -280,7 +282,8 @@ namespace LSH_CPP::Test {
         //test_weight_minhash();
         //test_weight_minhash_by_set();
         //test_lru_cache();
-        test_dna_shingling();
+        //test_dna_shingling();
+        //test_parallel_get_mean();
     }
 }
 namespace std {
