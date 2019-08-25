@@ -13,6 +13,7 @@
 #define EIGEN_VECTORIZE_SSE4_2
 #define EIGEN_VECTORIZE_AVX2
 #define EIGEN_VECTORIZE_FMA
+
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
@@ -39,7 +40,12 @@
 #include <chrono>
 #include <random>
 #include <limits>
-#include <execution> // C++17 parallelism TS header
+
+#ifdef USE_CXX_PARALLISM_TS
+
+#include <execution> // C++17 parallelism TS header,only be implemented in libstdc++(GCC 9)
+
+#endif
 
 // C std include
 #include <cstdint>
@@ -50,9 +56,24 @@
 #include <cassert>
 
 // Third party include
+
 // phmap默认不使用带随机因子的哈希,所以这里不需要显式设置NON_DETERMINISTIC为0.(当前场景不需要随机性的哈希).
 // #define PHMAP_NON_DETERMINISTIC 0
+
+// matplotlib-cpp 使用python2.7头文件,但是python2.7使用了register关键字,这个在std c++17已经弃用,
+// clang编译器默认开"-Wregister",导致编译python2.7相关的头文件会报错,需要在导入matplotlib-cpp时显式忽略这个编译错误.
+// 参考:(gcc也可以用同样的方法忽略某些警告带来的编译错误)
+// https://stackoverflow.com/questions/49692794/c-17-compatability-with-python-2-7
+// https://stackoverflow.com/questions/22422741/turning-off-the-register-storage-class-specifier-is-deprecated-warning
+#ifdef USE_CLANG_COMPILER
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wregister"
+#endif
 #include "../../third-party/matplotlib-cpp/matplotlibcpp.h"
+#ifdef USE_CLANG_COMPILER
+#pragma clang diagnostic pop
+#endif
+
 #include "gsl/gsl_integration.h"
 #include "../../third-party/parallel-hashmap/parallel_hashmap/phmap_fwd_decl.h"
 #include "../../third-party/parallel-hashmap/parallel_hashmap/phmap.h"

@@ -191,7 +191,11 @@ namespace LSH_CPP {
 
         // 计算一个序列的算术均值
         double get_mean(const std::vector<double> &sequence) {
+#ifdef USE_CXX_PARALLISM_TS
             double sum = std::reduce(std::execution::par, sequence.begin(), sequence.end()); // C++17并行求和
+#else
+            double sum = std::reduce(sequence.begin(),sequence.end());
+#endif
             return sum / (double) sequence.size();
         }
     }

@@ -1,5 +1,5 @@
 ## Require
-- g++ 9.* (support C++17 and C++ parallelism Extension)
+- g++ 9.* (support C++17 and C++ parallelism Extension) or clang++ 8.0.1
 - Eigen3 3.3.7 with intel mkl and intel tbb
 <br> Eigen official download [http://eigen.tuxfamily.org/index.php?title=Main_Page#Download]
 <br> To use intel mkl as eigen's backend, refer to [https://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html]
