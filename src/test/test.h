@@ -283,7 +283,7 @@ namespace LSH_CPP::Test {
         //test_weight_minhash_by_set();
         //test_lru_cache();
         //test_dna_shingling();
-        //test_parallel_get_mean();
+        test_parallel_get_mean();
     }
 }
 namespace std {

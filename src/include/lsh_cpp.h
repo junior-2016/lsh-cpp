@@ -5,6 +5,8 @@
 #ifndef LSH_CPP_LSH_CPP_H
 #define LSH_CPP_LSH_CPP_H
 
+#include "portability.h"
+
 // Eigen include and mkl macro setting
 #define EIGEN_USE_MKL
 #define EIGEN_USE_MKL_ALL
@@ -65,14 +67,10 @@
 // 参考:(gcc也可以用同样的方法忽略某些警告带来的编译错误)
 // https://stackoverflow.com/questions/49692794/c-17-compatability-with-python-2-7
 // https://stackoverflow.com/questions/22422741/turning-off-the-register-storage-class-specifier-is-deprecated-warning
-#ifdef USE_CLANG_COMPILER
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wregister"
-#endif
+LSH_CPP_PUSH_WARNING
+LSH_CPP_GNU_DISABLE_WARNING("-Wregister")
 #include "../../third-party/matplotlib-cpp/matplotlibcpp.h"
-#ifdef USE_CLANG_COMPILER
-#pragma clang diagnostic pop
-#endif
+LSH_CPP_POP_WARNING
 
 #include "gsl/gsl_integration.h"
 #include "../../third-party/parallel-hashmap/parallel_hashmap/phmap_fwd_decl.h"
