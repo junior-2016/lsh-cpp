@@ -100,7 +100,7 @@ namespace LSH_CPP {
 
         // 对Eigen的对齐问题,见:https://eigen.tuxfamily.org/dox/group__TopicStlContainers.html
         using Cache = lru_cache<uint64_t, Array, phmap::Hash<uint64_t>, phmap::EqualTo<uint64_t>,
-                Eigen::aligned_allocator<std::pair<const uint64_t, Array> >, phmap::flat_hash_map>;
+                Eigen::aligned_allocator, phmap::flat_hash_map>;
         static Cache cache; // 全局 lru_cache 加速 update 计算.
 
     public:

@@ -213,6 +213,9 @@ namespace std {
         }
     };
 
+    // dna shingling 用std::hash(bitset)得到哈希值.
+    // TODO: 理论上也可以直接 bitset cast to size_t 作为哈希值,这样更快.
+    //  另外 bitset cast 为 size_t 还可以直接作为权重最小哈希向量(Weighted MinHash Vector)的位置编码..
     template<size_t k, LSH_CPP::WeightFlag flag>
     struct hash<LSH_CPP::DNA_Shingling<k, flag>> {
         std::size_t operator()(LSH_CPP::DNA_Shingling<k, flag> const &dna_shingling) const {

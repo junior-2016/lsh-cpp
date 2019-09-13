@@ -15,7 +15,7 @@ namespace LSH_CPP {
             typename V,
             typename Hash,
             typename Eq,
-            typename Alloc,
+            template<typename/*Alloc Element*/> typename Alloc,
             template<typename/*K*/, typename/*V*/, typename /*Hash*/, typename /*Eq*/, typename /*Alloc*/> typename Map
     >
     class lru_cache {
@@ -23,7 +23,7 @@ namespace LSH_CPP {
         using k_v_pair_t = std::pair<K, V>;
         using Cache_List_t = std::list<k_v_pair_t>;
         using Cache_List_Iterator_t = typename Cache_List_t::iterator;
-        using Cache_Map_t = Map<K, Cache_List_Iterator_t, Hash, Eq, Alloc>;
+        using Cache_Map_t = Map<K, Cache_List_Iterator_t, Hash, Eq, Alloc<std::pair<const K,Cache_List_Iterator_t>>>;
         using Cache_Map_Iterator_t = typename Cache_Map_t::iterator;
         size_t _max_size;
         Cache_Map_t cache_map;

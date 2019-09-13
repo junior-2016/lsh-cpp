@@ -228,19 +228,23 @@ namespace LSH_CPP {
 
     };
 
-    template<size_t k>
-    struct std_Hash<DNA_Shingling < k>> {
-        inline uint64_t operator()(const DNA_Shingling <k> &shingling) { return std::hash<DNA_Shingling<k>>{}(shingling); }
-        inline uint64_t operator()(const std::vector<DNA_Shingling<k>> &) { return 0; }
-        inline uint64_t operator()(const std::vector<DNA_Shingling<k>> &, const std::pair<size_t, size_t> &){ return 0; }
+    template<size_t k, WeightFlag flag>
+    struct std_Hash<DNA_Shingling < k, flag>> {
+        inline uint64_t operator()(const DNA_Shingling <k, flag> &shingling) {
+            return std::hash<DNA_Shingling<k, flag>>{}(shingling);
+        }
+        inline uint64_t operator()(const std::vector<DNA_Shingling < k, flag>>&) {return 0;}
+        inline uint64_t operator()(const std::vector<DNA_Shingling < k, flag>>&, const std::pair<size_t, size_t> &){
+            return 0;
+        }
     };
 
-    template <size_t k>
-    using StdDNAShinglingHash32 = hash<std_Hash,DNA_Shingling<k>,32>;
-    template <size_t k>
-    using StdDNAShinglingHash64 = hash<std_Hash,DNA_Shingling<k>,64>;
-//    using StdStringViewHash64 = hash<std::hash, std::string_view, 64>;
-//    using StdStringViewHash32 = hash<std::hash, std::string_view, 32>;
+    template<size_t k, WeightFlag flag = no_weight>
+    using StdDNAShinglingHash32 = hash<std_Hash, DNA_Shingling<k,flag>, 32>;
+    template<size_t k,WeightFlag flag = no_weight>
+    using StdDNAShinglingHash64 = hash<std_Hash, DNA_Shingling<k,flag>, 64>;
+//  using StdStringViewHash64 = hash<std::hash, std::string_view, 64>;
+//  using StdStringViewHash32 = hash<std::hash, std::string_view, 32>;
 
 }
 

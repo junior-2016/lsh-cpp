@@ -228,8 +228,7 @@ namespace LSH_CPP::Test {
     void test_lru_cache() {
         // 测试 lru_cache 在 Eigen Align 机制下能否工作
         using Cache =  lru_cache<int, Eigen::Vector4i, phmap::Hash<int>, phmap::EqualTo<int>,
-                Eigen::aligned_allocator<std::pair<const int, Eigen::Vector4i> >,
-                phmap::flat_hash_map>;
+                Eigen::aligned_allocator, phmap::flat_hash_map>;
         Cache cache(10);
         cache.put(0, Eigen::Vector4i{0, 1, 2, 3});
         cache.put(1, Eigen::Vector4i{2, 4, 6, 8});
@@ -248,14 +247,18 @@ namespace LSH_CPP::Test {
 
     void test_dna_shingling() {
         std::string_view dna_1 = "ATCGTATCGTATCGT", dna_2 = "ATCGTTTACGTATCGTATCG";
-        auto data1 = split_dna_shingling<5, no_weight>(dna_1);
-        auto data2 = split_dna_shingling<5, no_weight>(dna_2);
-        StdDNAShinglingHash64<5> hash64;
+        constexpr WeightFlag flag = has_weight;
+        auto data1 = split_dna_shingling<5, flag>(dna_1);
+        auto data2 = split_dna_shingling<5, flag>(dna_2);
+        StdDNAShinglingHash64<5, flag> hash64{};
+        std::cout << "bit_str bit_to_number value value_hash weight\n";
         auto func = [&](const auto &item) {
-            std::cout << item.value().to_string()
-                      << " " << dna_shingling_decode<5, no_weight>(item)
-                      // << " "<< item.weight()
-                      << " " << hash64(item) << "\n";
+            std::cout << item.value().to_string() // cast bitset to string
+                      << " " << item.value().to_ullong() // cast bitset to unsigned long long
+                      << " " << dna_shingling_decode<5, flag>(item)
+                      << " " << hash64(item)
+                      << " " << item.weight()
+                      << "\n";
         };
         std::for_each(data1.begin(), data1.end(), std::ref(func));
         std::cout << std::endl;
@@ -281,8 +284,8 @@ namespace LSH_CPP::Test {
         //test_for_constexpr();
         //test_weight_minhash();
         //test_weight_minhash_by_set();
-        //test_lru_cache();
-        //test_dna_shingling();
+        test_lru_cache();
+        test_dna_shingling();
         test_parallel_get_mean();
     }
 }
