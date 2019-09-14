@@ -206,7 +206,7 @@ namespace LSH_CPP {
             std::pair<typename HashMap<SetValueType, size_t>::const_iterator, bool> ret;
             for (const auto &element:set) {
                 // insert and return { const_iterator, bool }.
-                ret = global_weight_vector_pos_map.insert({element.value(), global_pos});
+                ret = global_weight_vector_pos_map.try_emplace(element.value(), global_pos);
 
                 // insert success and update global_pos && update one row of sample_matrix for this new element.
                 if (ret.second) {

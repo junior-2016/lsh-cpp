@@ -116,7 +116,7 @@ namespace LSH_CPP {
             for (size_t i = 0; i < band_hash_maps.size(); i++) {
                 auto key = bandHashFunc(min_hash.hash_values, band_hash_range[i]);
                 if (auto pos = band_hash_maps[i].find(key); pos == band_hash_maps[i].end()) { // c++17 if (init;cond)
-                    band_hash_maps[i].insert({key, {label}});
+                    band_hash_maps[i].try_emplace(key, BandHashValueType{label});
                 } else {
                     (*pos).second.push_back(label);
                 }
@@ -137,7 +137,7 @@ namespace LSH_CPP {
                     }
                     (*pos).second.push_back(label);
                 } else {
-                    band_hash_maps[i].insert({key, {label}});
+                    band_hash_maps[i].try_emplace(key, BandHashValueType{label});
                 }
             }
             return candidate_set;

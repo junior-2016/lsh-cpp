@@ -23,6 +23,8 @@ namespace LSH_CPP {
         //  2019/8/12 pos_list 已经严重影响内存开销,先考虑移除(后面再做压缩)...
         // mutable std::vector<size_t> pos_list;
 
+        K_shingling(const ValueType &_value, const WeightType &_weight) : _value(_value), _weight(_weight) {}
+
         // 通过weight()方法得到权重(重复元素个数).
         WeightType weight() const {
             // return pos_list.size();
@@ -77,7 +79,7 @@ namespace LSH_CPP {
             // 这样写可以最大效率实现插入和修改pos_list,完全不需要插入一次,再查找一次,因为插入的时候本身就是在查找.
             // 另外,这种写法完全可以用 map [key(不可变部分)] = value (可变部分) 来代替.
             // (*(result.insert(K_shingling{substr, {}})).first).pos_list.push_back(i);
-            (*(result.insert(K_shingling{substr, 0})).first)._weight++;
+            (*(result.emplace(substr, 0)).first)._weight++;
         }
         return result;
     }
@@ -192,13 +194,14 @@ namespace LSH_CPP {
             }
         }
         size_t N = string.size() - k + 1;
-        HashSet<DNA_Shingling<k, flag>> result;
+        HashSet<DNA_Shingling<k, flag>> result(N); // 预先设置哈希表容器大小避免扩容开销
         for (size_t i = 0; i < N; i++) {
             auto substr = string.substr(i, k);
             if constexpr (flag == has_weight) {
-                (*(result.insert(DNA_Shingling<k, flag>{dna_shingling_encode<k, flag>(substr), 0})).first)._weight++;
+                // 使用 emplace 在容器里就地构造对象,避免构造后拷贝开销.
+                (*(result.emplace(dna_shingling_encode<k, flag>(substr), 0)).first)._weight++;
             } else {
-                result.insert(DNA_Shingling<k, flag>{dna_shingling_encode<k, flag>(substr)});
+                result.emplace(dna_shingling_encode<k, flag>(substr));
             }
         }
         return result;

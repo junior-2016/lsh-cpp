@@ -179,6 +179,8 @@ namespace LSH_CPP::Test {
         ValueType _value;
         WeightType _weight;
 
+        A(const ValueType &_value, const WeightType &_weight) : _value(_value), _weight(_weight) {}
+
         bool operator==(const A &a) const {
             return _value == a._value;
         }
@@ -215,10 +217,11 @@ namespace LSH_CPP::Test {
         std::vector<size_t> A_v = {3, 2, 1, 0, 4, 0, 4, 0, 0, 0, 3, 0, 0, 0, 0, 5, 0, 0, 0, 0};
         std::vector<size_t> B_v = {2, 3, 0, 1, 0, 3, 0, 0, 0, 0, 5, 0, 9, 0, 0, 2, 0, 0, 0, 0};
         std::cout << "actual jaccard similarity is : " << generalized_jaccard_similarity(a_set, b_set) << "\n";
-        WeightMinHash<200000, A, 128> min_hash_a, min_hash_b;
+        WeightMinHash<200000, A, 1024> min_hash_a, min_hash_b;
         min_hash_a.update(a_set);
         min_hash_b.update(b_set);
-        std::cout << "weight minhash jaccard similarity is : " << weight_minhash_jaccard(min_hash_a, min_hash_b);
+        std::cout << "weight minhash jaccard similarity is : " << weight_minhash_jaccard(min_hash_a, min_hash_b)
+                  << "\n";
 //        WeightMinHash<20, size_t> min_hash_a, min_hash_b;
 //        min_hash_a.update(A_v);
 //        min_hash_b.update(B_v);
@@ -273,6 +276,16 @@ namespace LSH_CPP::Test {
         std::cout << "ret:" << ret << " time:" << millisecond_duration((timeNow() - start)) << " ms\n";
     }
 
+    void test_hash_map_set_construct_emplace() {
+        HashSet<A> set(10);
+        std::cout << (*(set.emplace(A{"a", 0}).first)).value();
+        std::cout << (*(set.emplace("a", 0).first)).value();
+        HashMap<int, A> map(10);
+        map.try_emplace(0, "a", 1); // c++17
+        auto itr = map.find(0);
+        std::cout << (*itr).second.value() << "\n";
+    }
+
     void test() {
         //init();
         //test_hash_map_performance();
@@ -282,11 +295,12 @@ namespace LSH_CPP::Test {
         //test_lsh_minhash();
         //test_make_constexpr_array();
         //test_for_constexpr();
-        //test_weight_minhash();
-        //test_weight_minhash_by_set();
+        test_weight_minhash();
+        test_weight_minhash_by_set();
         test_lru_cache();
         test_dna_shingling();
         test_parallel_get_mean();
+        test_hash_map_set_construct_emplace();
     }
 }
 namespace std {

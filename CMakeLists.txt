@@ -5,6 +5,43 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+# find boost library
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+find_package(Boost REQUIRED)
+
+# find GSL
+find_package(GSL REQUIRED)
+
+# require: sudo apt-get install python-matplotlib python-numpy python-tk python2.7-dev
+find_package(PythonLibs 2.7 REQUIRED)
+
+# ArchLinux OS don't link numpy headers to /usr/include/python2.7.
+set(NUMPY_INCLUDE "/usr/lib/python2.7/site-packages/numpy/core/include/")
+
+# find eigen & intel_mkl
+find_package(Eigen3 3.3.7 REQUIRED)
+if ("$ENV{MKLROOT}" STREQUAL "")
+    message(FATAL_ERROR "You don't hava intel mkl.")
+endif ()
+message("MKLROOT = $ENV{MKLROOT}")
+set(MKLROOT "$ENV{MKLROOT}")
+
+# find stmpct include directories
+set(LIBSTMPCT_PUBLIC_HDR "third-party/streaming-percentiles/cpp/src/include/stmpct/")
+
+# source file path
+file(GLOB Self_include_file "src/include/*.h")
+file(GLOB Test_file "src/test/*.cpp" "src/test/*.h")
+file(GLOB Benchmark_file "src/benchmark/*.h" "src/benchmark/*.cpp")
+
+# option for test and benchmark
+OPTION(TEST "build test" ON)
+OPTION(BENCHMARK "build benchmark" ON)
+set(TEST ON)
+set(BENCHMARK ON)
+
 # 有关GCC优化相关的更多选项见:
 # https://stackoverflow.com/questions/14492436/g-optimization-beyond-o3-ofast
 # https://gcc.gnu.org/onlinedocs/gcc-9.1.0/gcc/Optimize-Options.html
@@ -50,43 +87,6 @@ else ()
 endif ()
 # unset cmake option variable cache,see:https://stackoverflow.com/questions/22481647/cmake-if-else-with-option
 unset(USE_CXX_PARALLISM_TS CACHE)
-
-# find boost library
-set(Boost_USE_STATIC_LIBS OFF)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost REQUIRED)
-
-# find GSL
-find_package(GSL REQUIRED)
-
-# require: sudo apt-get install python-matplotlib python-numpy python-tk python2.7-dev
-find_package(PythonLibs 2.7 REQUIRED)
-
-# ArchLinux OS don't link numpy headers to /usr/include/python2.7.
-set(NUMPY_INCLUDE "/usr/lib/python2.7/site-packages/numpy/core/include/")
-
-# find eigen & intel_mkl
-find_package(Eigen3 3.3.7 REQUIRED)
-if ("$ENV{MKLROOT}" STREQUAL "")
-    message(FATAL_ERROR "You don't hava intel mkl.")
-endif ()
-message("MKLROOT = $ENV{MKLROOT}")
-set(MKLROOT "$ENV{MKLROOT}")
-
-# find stmpct include directories
-set(LIBSTMPCT_PUBLIC_HDR "third-party/streaming-percentiles/cpp/src/include/stmpct/")
-
-# source file path
-file(GLOB Self_include_file "src/include/*.h")
-file(GLOB Test_file "src/test/*.cpp" "src/test/*.h")
-file(GLOB Benchmark_file "src/benchmark/*.h" "src/benchmark/*.cpp")
-
-# option for test and benchmark
-OPTION(TEST "build test" ON)
-OPTION(BENCHMARK "build benchmark" ON)
-set(TEST ON)
-set(BENCHMARK ON)
 
 # executable setting
 include_directories(${Boost_INCLUDE_DIRS} ${NUMPY_INCLUDE} ${MKLROOT}/include ${EIGEN3_INCLUDE_DIR}

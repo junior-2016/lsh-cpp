@@ -25,7 +25,7 @@ namespace LSH_CPP::Benchmark {
          * 故而,应该在 k <=7 的范围内进行测试, 然后对于更小的k,应该使用更大的 sim threshold 来抑制结果增长.
          */
         constexpr size_t k = 6; // k取太小的话完全没有区分度,会导致所有的都相似,而且相似度阀值0.5可能太小
-        const double threshold = 0.9;
+        const double threshold = 0.8;
 
         constexpr size_t n_sample = 512;
 
@@ -164,10 +164,14 @@ namespace LSH_CPP::Benchmark {
         }
     };
 
+#undef record_result
+
     void minhash_linear_scan_query(const std::string &minhash_output_filename) {
         std::cout << "run minhash linear scan ...\n";
         using namespace DNA_DATA;
+#ifdef record_result
         File<FileIO::Write, 16> out(minhash_output_filename);
+#endif
         TimeVar start = timeNow();
         for (size_t i = 1; i < labels.size(); i++) {
             std::vector<size_t> temp;
@@ -177,21 +181,27 @@ namespace LSH_CPP::Benchmark {
                     temp.push_back(labels[j]);
                 }
             }
+#ifdef record_result
             out.write(labels[i]);
             out.write(temp.size());
             for (auto &item:temp) { out.write(item); }
+#endif
         }
-        std::cout << "time : " << second_duration((timeNow() - start)) << "seconds\n";
+        std::cout << "minhash linear scan time : " << second_duration((timeNow() - start)) << "seconds\n";
+#ifdef record_result
         out.close();
+#endif
     }
 
     void lsh_query(const std::string &lsh_output_filename) {
         using namespace DNA_DATA;
         std::cout << "run lsh method ... \n";
         lsh.print_config();
+#ifdef record_result
         File<FileIO::Write, 16> out(lsh_output_filename);
-        lsh.insert(minhash_set[labels[0]], labels[0]);
+#endif
         TimeVar start = timeNow();
+        lsh.insert(minhash_set[labels[0]], labels[0]);
         for (size_t i = 1; i < labels.size(); i++) {
             auto candidate_set = lsh.query_then_insert(minhash_set[labels[i]], labels[i]);
             std::vector<size_t> temp;
@@ -201,19 +211,23 @@ namespace LSH_CPP::Benchmark {
                     temp.push_back(candidate_label);
                 }
             }
+#ifdef record_result
             out.write(labels[i]);
             out.write(temp.size());
             for (auto &item:temp) { out.write(item); }
+#endif
         }
-        std::cout << "time : " << second_duration((timeNow() - start)) << "seconds \n";
+        std::cout << "lsh time : " << second_duration((timeNow() - start)) << "seconds \n";
+#ifdef record_result
         out.close();
+#endif
     }
 
     void weight_minhash_query() {
 
     }
 
-#define SAMPLE_F1_SCORE_TEST
+#undef SAMPLE_F1_SCORE_TEST
 #ifdef SAMPLE_F1_SCORE_TEST
     std::vector<HashSet < DNA_Shingling < CONFIG::k, LSH_CPP::no_weight>>>
     dna_shingling_sets;
@@ -366,6 +380,17 @@ namespace LSH_CPP::Benchmark {
         minhash_linear_scan_query(minhash_output_filename_prefix + binary_file_suffix);
         lsh_query(lsh_output_filename_prefix + binary_file_suffix);
 #endif
+        // 查看数据集中dna shingling weight分布
+//        HashMap<unsigned long, size_t> weights;
+//        for (const auto &doc:data) {
+//            auto set = split_dna_shingling<k, LSH_CPP::has_weight>(doc);
+//            for (const auto &item:set) {
+//                weights[item.value().to_ulong()] += item.weight();
+//            }
+//        }
+//        for (const auto &item:weights) {
+//            std::cout << item.first << " " << item.second << "\n";
+//        }
     }
 }
 #endif //LSH_CPP_DNA_BENCHMARK_H
