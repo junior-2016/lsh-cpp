@@ -166,26 +166,26 @@ namespace LSH_CPP::Benchmark {
         });
         plt::figure_size(800, 600);
         plt::subplot(2, 1, 1);
-        plt::named_plot("linear_scan time", x, time_linear_scan_sets, "b-");
-        plt::named_plot("lsh time", x, time_lsh_sets, "r-");
-        plt::xlabel("n_sample");
-        plt::ylabel("time (ms)");
-        plt::title("lsh and linear_scan performance compare \n "
+        plt::title("performance comparison \n "
                    "(Train-Set size = 1000; Query-Set size = 100; threshold = 0.9;\n"
                    "lsh_false_positive_weight:lsh_false_negative_weight = 0.65:0.35)");
+        plt::named_plot("minhash pairwise comparison time", x, time_linear_scan_sets, "b-");
+        plt::named_plot("minhash lsh optimization time", x, time_lsh_sets, "r-");
+        plt::xlabel("n_sample");
+        plt::ylabel("time (ms)");
         plt::legend();
         plt::subplot(2, 1, 2);
-        plt::named_plot("lsh time", x, time_lsh_sets, "r-");
+        plt::named_plot("minhash lsh optimization time", x, time_lsh_sets, "r-");
         plt::xlabel("n_sample");
         plt::ylabel("time (ms)");
         plt::legend();
         plt::save("../src/benchmark/lsh_performance.png");
 
         plt::figure_size(800, 600);
-        plt::named_plot("linear_scan", x, linear_scan_mean_f_scores, "b-");
-        plt::named_plot("lsh", x, lsh_mean_f_scores, "r-");
-        plt::title("lsh and linear_scan f-score \n (Train-Set size = 1000; Query-Set size = 100; threshold = 0.9;\n"
+        plt::title("f-score comparison\n (Train-Set size = 1000; Query-Set size = 100; threshold = 0.9;\n"
                    "lsh_false_positive_weight:lsh_false_negative_weight = 0.65:0.35)");
+        plt::named_plot("minhash pairwise comparison", x, linear_scan_mean_f_scores, "b-");
+        plt::named_plot("minhash lsh optimization", x, lsh_mean_f_scores, "r-");
         plt::xlabel("n_sample");
         plt::ylabel("f score");
         plt::legend();

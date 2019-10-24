@@ -24,8 +24,8 @@ namespace LSH_CPP::Benchmark {
          * 但是这样得到的结果不能反映太多的相似性,因为 sim threshold 低于0.5,已经不具有参考性.
          * 故而,应该在 k <=7 的范围内进行测试, 然后对于更小的k,应该使用更大的 sim threshold 来抑制结果增长.
          */
-        constexpr size_t k = 6; // k取太小的话完全没有区分度,会导致所有的都相似,而且相似度阀值0.5可能太小
-        const double threshold = 0.8;
+        constexpr size_t k = 7; // k取太小的话完全没有区分度,会导致所有的都相似,而且相似度阀值0.5可能太小
+        const double threshold = 0.5;
 
         constexpr size_t n_sample = 512;
 
@@ -164,7 +164,7 @@ namespace LSH_CPP::Benchmark {
         }
     };
 
-#undef record_result
+#define record_result
 
     void minhash_linear_scan_query(const std::string &minhash_output_filename) {
         std::cout << "run minhash linear scan ...\n";
@@ -223,11 +223,9 @@ namespace LSH_CPP::Benchmark {
 #endif
     }
 
-    void weight_minhash_query() {
-
-    }
-
+#undef WEIGHT_MINHASH_TEST
 #undef SAMPLE_F1_SCORE_TEST
+
 #ifdef SAMPLE_F1_SCORE_TEST
     std::vector<HashSet < DNA_Shingling < CONFIG::k, LSH_CPP::no_weight>>>
     dna_shingling_sets;
@@ -364,8 +362,42 @@ namespace LSH_CPP::Benchmark {
     void dna_benchmark() {
         using namespace DNA_DATA;
         data = get_document_from_file(data_path);
-#ifdef SAMPLE_F1_SCORE_TEST
+#if defined(SAMPLE_F1_SCORE_TEST)
         Test<1000>();
+#elif defined(WEIGHT_MINHASH_TEST)
+        // 取第100条与后面100条比较结果
+        constexpr auto dim = pow(4, k);
+        using weight_vector_t = std::vector<uint32_t>;
+        using weight_minhash_t =  WeightMinHash<dim, uint32_t, n_sample>;
+        // for (const auto &doc:data) {
+        HashSet<DNA_Shingling<k, has_weight>> set_A;
+        weight_minhash_t hash_A;
+        double abs_mean_error = 0;
+        constexpr size_t count = 1500;
+        std::random_device d;
+        std::mt19937_64 random_gen(d());
+        std::uniform_int_distribution<size_t> dis(0, data.size() - count - 1);
+        auto start = dis(random_gen);
+        for (size_t i = start; i <= start + count; i++) {
+            auto set = split_dna_shingling<k, LSH_CPP::has_weight>(data[i]);
+            weight_vector_t vector(dim);
+            for (const auto &item:set) {
+                vector[item.value().to_ulong()] = item.weight();
+            }
+            if (i == start) {
+                hash_A.update(vector);
+                set_A = set;
+            } else {
+                weight_minhash_t temp;
+                temp.update(vector);
+                auto sim = weight_minhash_jaccard(hash_A, temp);
+                auto actual_sim = generalized_jaccard_similarity(set_A, set);
+                auto abs_error = std::fabs(sim - actual_sim);
+                std::cout << sim << " " << actual_sim << " " << abs_error << "\n";
+                abs_mean_error += abs_error;
+            }
+        }
+        std::cout << "mean abs error " << abs_mean_error / (double) (count) << "\n";
 #else
         for (size_t i = 0; i < data.size(); i++) labels.push_back(i);
         minhash_set.reserve(data.size());
@@ -380,17 +412,6 @@ namespace LSH_CPP::Benchmark {
         minhash_linear_scan_query(minhash_output_filename_prefix + binary_file_suffix);
         lsh_query(lsh_output_filename_prefix + binary_file_suffix);
 #endif
-        // 查看数据集中dna shingling weight分布
-//        HashMap<unsigned long, size_t> weights;
-//        for (const auto &doc:data) {
-//            auto set = split_dna_shingling<k, LSH_CPP::has_weight>(doc);
-//            for (const auto &item:set) {
-//                weights[item.value().to_ulong()] += item.weight();
-//            }
-//        }
-//        for (const auto &item:weights) {
-//            std::cout << item.first << " " << item.second << "\n";
-//        }
     }
 }
 #endif //LSH_CPP_DNA_BENCHMARK_H

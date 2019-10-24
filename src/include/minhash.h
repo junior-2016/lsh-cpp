@@ -199,8 +199,9 @@ namespace LSH_CPP {
         // 不过这里的函数不会对 MapArray 做任何修改,所以不用担心 MapArray 影响原数据的值.
         MapArray a_array(A.hash_values.data(), _n_permutation);
         MapArray b_array(B.hash_values.data(), _n_permutation);
-        int count = ((a_array - b_array) == 0).select(one_eigen_array<uint64_t, _n_permutation>,
-                                                      zero_eigen_array<uint64_t, _n_permutation>).sum();
+        int count = (a_array == b_array)
+                .select(one_eigen_array<uint64_t, _n_permutation>, zero_eigen_array<uint64_t, _n_permutation>)
+                .sum();
         return (double) count / (double) _n_permutation;
     }
 

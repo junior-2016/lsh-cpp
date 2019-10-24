@@ -27,6 +27,7 @@ if ("$ENV{MKLROOT}" STREQUAL "")
 endif ()
 message("MKLROOT = $ENV{MKLROOT}")
 set(MKLROOT "$ENV{MKLROOT}")
+add_definitions(-DCPU_THREAD_NUMBERS=8) # specify cpu thread numbers for mkl
 
 # find stmpct include directories
 set(LIBSTMPCT_PUBLIC_HDR "third-party/streaming-percentiles/cpp/src/include/stmpct/")

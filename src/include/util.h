@@ -126,6 +126,11 @@ namespace LSH_CPP {
     static const Eigen::Array<_Scalar, row, 1> max_eigen_array =
             Eigen::Array<_Scalar, row, 1>::Constant(std::numeric_limits<_Scalar>::max());
 
+    // constexpr power function(only for integer power)
+    constexpr int32_t pow(int32_t x, uint32_t y) {
+        return y == 0 ? 1 : x * pow(x, y - 1);
+    }
+
     // 统计相关数据量需要的函数
     namespace Statistic {
         using precision_type = double;
