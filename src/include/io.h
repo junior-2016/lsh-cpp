@@ -21,7 +21,7 @@ namespace LSH_CPP {
     std::vector<std::string> get_document_from_file(const char *path) {
         std::ifstream file(path);
         if (!file.is_open()) {
-            fprintf(stderr, "your file %s don't exist.\n", path);
+            fprintf(stderr, "Your file %s don't exist.\n", path);
             std::exit(-1);
         }
         std::string line;
@@ -35,6 +35,30 @@ namespace LSH_CPP {
 
     inline std::vector<std::string> get_document_from_file(const std::string &path) {
         return get_document_from_file(path.c_str());
+    }
+
+    /**
+     *  get dna document from fastq file.
+     *  Format:
+     *  First Line: Head.
+     *  Second Line: dna data.
+     *  Third Line: +Head.
+     *  Forth Line: Quality Score.
+     */
+    std::vector<std::string> get_document_from_fastq_file(const char *path) {
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            fprintf(stderr, "Your file %s don't exist.\n", path);
+            std::exit(-1);
+        }
+        std::string line;
+        std::vector<std::string> data;
+        int order = 0;
+        while (std::getline(file, line)) {
+            if ((order++) % 4 == 1) data.push_back(line);
+        }
+        file.close();
+        return data;
     }
 }
 #endif //LSH_CPP_IO_H

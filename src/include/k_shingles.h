@@ -90,14 +90,27 @@ namespace LSH_CPP {
      * @tparam k k-shingling长度
      * @tparam flag 标识是否拥有权重数据,默认无权重(no_weight)
      */
-    using WeightFlag = uint32_t;
-    constexpr static WeightFlag has_weight = 1;
-    constexpr static WeightFlag no_weight = 2;
-    template<size_t k, WeightFlag flag = no_weight>
-    struct DNA_Shingling;
+    enum class WeightFlag : uint32_t {
+        has_weight = 1,
+        no_weight = 2
+    };
+
+    /**
+     * DNA_Shingling 模板
+     * @tparam k k_shingling length.
+     * @tparam flag 只允许 WeighFlag::has_weight / WeightFlag::no_weight 两个值,不允许其他类型的值.
+     * 注意 :
+     * 虽然 WeightFlag 的底层类型是 uint32_t, 但是你用 uint32_t 来实例化也是不行的, 比如 DNA_Shingling<7,(uint32_t)(1)> 不能通过编译.
+     * 这样就确保了强类型安全.
+     */
+    template<size_t k, auto flag>
+    struct DNA_Shingling {
+        static_assert(std::is_same_v<decltype(flag), WeightFlag>);
+        static_assert((flag == WeightFlag::no_weight) || (flag == WeightFlag::has_weight));
+    };
 
     template<size_t k>
-    struct DNA_Shingling<k, no_weight> {
+    struct DNA_Shingling<k, WeightFlag::no_weight> {
         static constexpr size_t bits = 2 * k; // dna k-shingling 每一个位置用2-bit编码
         using ValueType = std::bitset<bits>;
 
@@ -107,13 +120,13 @@ namespace LSH_CPP {
 
         [[nodiscard]] ValueType value() const { return _value; }
 
-        bool operator==(const DNA_Shingling<k, no_weight> &shingling) const {
+        bool operator==(const DNA_Shingling<k, WeightFlag::no_weight> &shingling) const {
             return _value == shingling._value;
         }
     };
 
     template<size_t k>
-    struct DNA_Shingling<k, has_weight> {
+    struct DNA_Shingling<k, WeightFlag::has_weight> {
         static constexpr size_t bits = 2 * k; // dna k-shingling 每一个位置用2-bit编码
         using WeightType = uint32_t;
         using ValueType = std::bitset<bits>;
@@ -127,13 +140,13 @@ namespace LSH_CPP {
 
         [[nodiscard]] WeightType weight() const { return _weight; }
 
-        bool operator==(const DNA_Shingling<k, has_weight> &shingling) const {
+        bool operator==(const DNA_Shingling<k, WeightFlag::has_weight> &shingling) const {
             return _value == shingling._value;
         }
     };
 
     // dna_shingling 编码压缩
-    template<size_t k, WeightFlag flag>
+    template<size_t k, auto flag>
     typename DNA_Shingling<k, flag>::ValueType dna_shingling_encode(const std::string_view &dna_shingling) {
         using ValueType = typename DNA_Shingling<k, flag>::ValueType;
 
@@ -168,7 +181,7 @@ namespace LSH_CPP {
 
     // 注意,如果源字符串长度小于k,比如 str = AAAT, k = 5, 那么编码的时候依然会按 k = 5 编码为 00_00_00_01_00, 解码的时候就变成 AAATA.
     // 要解决这个问题需要多引入一个member表示字符串的真正长度,但考虑到极大多数的dna都非常长,并且长度远大于k,所以这里不考虑这个问题.
-    template<size_t k, WeightFlag flag>
+    template<size_t k, auto flag>
     std::string dna_shingling_decode(const DNA_Shingling<k, flag> &shingling) {
         std::string dna;
         int pos = shingling.bits - 1; // 注意这里pos用int类型,否则下面的while会死循环.
@@ -184,20 +197,20 @@ namespace LSH_CPP {
         return dna;
     }
 
-    template<size_t k, WeightFlag flag>
+    template<size_t k, auto flag>
     HashSet <DNA_Shingling<k, flag>> split_dna_shingling(const std::string_view &string) {
-        if (k >= string.size()) {
-            if constexpr (flag == has_weight) {
+        if (k >= string.size()) { // 这里的string.size()虽然是constexpr,但只有当string是编译期确定才有效.所以不能用if constexpr.
+            if constexpr (flag == WeightFlag::has_weight) {
                 return {DNA_Shingling<k, flag>{dna_shingling_encode<k, flag>(string), 1}};
             } else {
                 return {DNA_Shingling<k, flag>{dna_shingling_encode<k, flag>(string)}};
             }
         }
         size_t N = string.size() - k + 1;
-        HashSet<DNA_Shingling<k, flag>> result(N); // 预先设置哈希表容器大小避免扩容开销
+        HashSet <DNA_Shingling<k, flag>> result(N); // 预先设置哈希表容器大小避免扩容开销
         for (size_t i = 0; i < N; i++) {
             auto substr = string.substr(i, k);
-            if constexpr (flag == has_weight) {
+            if constexpr (flag == WeightFlag::has_weight) {
                 // 使用 emplace 在容器里就地构造对象,避免构造后拷贝开销.
                 (*(result.emplace(dna_shingling_encode<k, flag>(substr), 0)).first)._weight++;
             } else {
@@ -219,7 +232,7 @@ namespace std {
     // dna shingling 用std::hash(bitset)得到哈希值.
     // TODO: 理论上也可以直接 bitset cast to size_t 作为哈希值,这样更快.
     //  另外 bitset cast 为 size_t 还可以直接作为权重最小哈希向量(Weighted MinHash Vector)的位置编码..
-    template<size_t k, LSH_CPP::WeightFlag flag>
+    template<size_t k, auto flag>
     struct hash<LSH_CPP::DNA_Shingling<k, flag>> {
         std::size_t operator()(LSH_CPP::DNA_Shingling<k, flag> const &dna_shingling) const {
             return phmap::HashState::combine(0, dna_shingling._value);

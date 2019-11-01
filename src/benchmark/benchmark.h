@@ -12,8 +12,8 @@
 
 namespace LSH_CPP::Benchmark {
     void run_benchmark() {
-        //dna_benchmark();
-        lsh_benchmark();
+        dna_benchmark();
+        //lsh_benchmark();
         //weight_minhash_benchmark();
     }
 }

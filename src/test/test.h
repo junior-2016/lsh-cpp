@@ -250,15 +250,15 @@ namespace LSH_CPP::Test {
 
     void test_dna_shingling() {
         std::string_view dna_1 = "ATCGTATCGTATCGT", dna_2 = "ATCGTTTACGTATCGTATCG";
-        constexpr WeightFlag flag = has_weight;
-        auto data1 = split_dna_shingling<5, flag>(dna_1);
-        auto data2 = split_dna_shingling<5, flag>(dna_2);
-        StdDNAShinglingHash64<5, flag> hash64{};
+
+        auto data1 = split_dna_shingling<5, WeightFlag::has_weight>(dna_1);
+        auto data2 = split_dna_shingling<5, WeightFlag::has_weight>(dna_2);
+        StdDNAShinglingHash64<5, WeightFlag::has_weight> hash64{};
         std::cout << "bit_str bit_to_number value value_hash weight\n";
         auto func = [&](const auto &item) {
             std::cout << item.value().to_string() // cast bitset to string
                       << " " << item.value().to_ullong() // cast bitset to unsigned long long
-                      << " " << dna_shingling_decode<5, flag>(item)
+                      << " " << dna_shingling_decode<5, WeightFlag::has_weight>(item)
                       << " " << hash64(item)
                       << " " << item.weight()
                       << "\n";
