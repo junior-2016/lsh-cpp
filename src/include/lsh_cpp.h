@@ -5,6 +5,10 @@
 #ifndef LSH_CPP_LSH_CPP_H
 #define LSH_CPP_LSH_CPP_H
 
+#pragma GCC system_header                           // remove third-party warnings
+#pragma GCC diagnostic ignored "-Wconversion"       // disable conversion warnings
+#pragma GCC diagnostic ignored "-Wunused-parameter" // disable unused parameter
+
 #include "portability.h"
 
 // Eigen include and mkl macro setting

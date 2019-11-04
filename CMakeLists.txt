@@ -5,6 +5,22 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+# update git submodule
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+    # Update submodules as needed
+    option(GIT_SUBMODULE "Check submodules during build" ON)
+    if(GIT_SUBMODULE)
+        message(STATUS "Submodule update")
+        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                RESULT_VARIABLE GIT_SUBMOD_RESULT)
+        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+            message(FATAL_ERROR "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+        endif()
+    endif()
+endif()
+
 # find boost library
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
@@ -36,12 +52,6 @@ set(LIBSTMPCT_PUBLIC_HDR "third-party/streaming-percentiles/cpp/src/include/stmp
 file(GLOB Self_include_file "src/include/*.h")
 file(GLOB Test_file "src/test/*.cpp" "src/test/*.h")
 file(GLOB Benchmark_file "src/benchmark/*.h" "src/benchmark/*.cpp")
-
-# option for test and benchmark
-OPTION(TEST "build test" ON)
-OPTION(BENCHMARK "build benchmark" ON)
-set(TEST ON)
-set(BENCHMARK ON)
 
 # 有关GCC优化相关的更多选项见:
 # https://stackoverflow.com/questions/14492436/g-optimization-beyond-o3-ofast
@@ -110,6 +120,13 @@ if (USE_CXX_PARALLISM_TS)
     set(LSH_CPP_REQUIRE_LIBS ${LSH_CPP_REQUIRE_LIBS} ${TBBLIB})
 endif ()
 
+# option for test and benchmark
+OPTION(TEST "build test" ON)
+OPTION(BENCHMARK "build benchmark" ON)
+set(TEST ON)
+set(BENCHMARK ON)
+unset(TEST CACHE)
+unset(BENCHMARK CACHE)
 if (TEST)
     add_executable(lsh_cpp_test ${Self_include_file} ${Test_file})
     target_include_directories(lsh_cpp_test PRIVATE ${PYTHON_INCLUDE_DIRS})
