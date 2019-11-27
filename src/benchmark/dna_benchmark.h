@@ -26,7 +26,7 @@ namespace LSH_CPP::Benchmark {
          * 故而,应该在 k <=7 的范围内进行测试, 然后对于更小的k,应该使用更大的 sim threshold 来抑制结果增长.
          */
         constexpr size_t k = 6; // k取太小的话完全没有区分度,会导致所有的都相似,而且相似度阀值0.5可能太小
-        const double threshold = 0.5;
+        const double threshold = 0.7;
 
         constexpr size_t n_sample = 512;
 
@@ -194,102 +194,6 @@ namespace LSH_CPP::Benchmark {
 #endif
     }
 
-    //TODO
-    // DNA 相似数据压缩
-    // 目前看来这种[找出相似就压缩,剩下的继续找相似]的压缩方法貌似不是很好.感觉还是需要后面的聚类检测再压缩才有效果..
-    // 考虑换 k threshold 尝试.. 好像也不是特别好.
-    // 那只能考虑几种方法了:
-    // 1.一边做重复序列查找的后端图聚类这块,同时探讨前端其他方法的可行性(其他的相似性检测方法、相似度=>比如说信息论的互信息的变种NMI/VI等),然后利用后端的聚类结果,用lpaq做进一步的压缩处理.
-    // 2.或者根据已有的相似情况,设计新的压缩算法,让压缩算法充分利用基因的特性和相似性,而不是借助第三方工具压缩.
-    // 因为第三方工具是通用的压缩算法,对特定问题的信息并不敏感,而且它可能不知道这个是基因数据,可能用了更长的编码而不是2-bit编码. => 需要查一下lpaq的算法.
-    // 另外,如果是要根据基因的特性和相似性来设计压缩算法,我觉得纯粹使用 jaccard_sim测度(min_hash) 可能并不理想,或许weight jaccard_sim测度可以解决部分问题,
-    // 还有就是找出两条基因相似后,我觉得必须比对回两者的基因字符串上,找出匹配的位置和范围,给压缩算法提供一个空间信息,然后再设计well-define的压缩算法.
-    // 压缩的idea可以参考: http://mattmahoney.net/dc/dce.html
-    // 基因最基本的压缩就是two-bit编码,需要额外做的东西就是利用已有的相似信息减少储存的read的长度.
-    // 图聚类可以参考几本网上的图论书籍(network_science online等),还有图聚类的论文,
-    // 结合图神经网络/传统图聚类或图社区检测/图嵌入/图学习/属性图聚类/知识图谱/甚至是群表示学习都看一下.
-
-    //TODO
-    // 下一步的计划: 调整 k/threshold, 测试ground_truth(jaccard sim)的结果;同时还可以测试下 weight jaccard sim的情况.
-    // 个人感觉: ground truth 的 k 应该在 k=6 的时候结果会多一些.
-    enum class FLAG : uint8_t {
-        FIND_SUCCESS = 1, NOT_FIND = 0
-    };
-
-    void minhash_dna_compress(const std::string &parent_dir) {
-        using namespace DNA_DATA;
-        std::vector<FLAG> flags(minhash_set.size(), FLAG::NOT_FIND);
-        size_t file_count = 0;
-        const std::string output_parent_dir = parent_dir + "split_result/";
-        std::ofstream extra1(output_parent_dir + "extra1.dna");
-        std::ofstream extra2(output_parent_dir + "extra2.dna");
-        for (size_t i = 0; i < minhash_set.size(); i++) {
-            if (flags[i] == FLAG::NOT_FIND) {
-                flags[i] = FLAG::FIND_SUCCESS;
-                std::vector<std::string_view> collect;
-                for (size_t j = i + 1; j < minhash_set.size(); j++) {
-                    if (flags[j] == FLAG::NOT_FIND) {
-                        double sim = minhash_jaccard_similarity(minhash_set[i], minhash_set[j]);
-                        if (sim >= threshold) {
-                            flags[j] = FLAG::FIND_SUCCESS;
-                            collect.push_back(data[j]);
-                        }
-                    }
-                }
-                if (collect.empty()) {
-                    extra1 << data[i] << "\n";
-                } else if (collect.size() < 5) {
-                    extra2 << data[i] << "\n";
-                    std::for_each(collect.begin(), collect.end(), [&](const auto &item) { extra2 << item << "\n"; });
-                } else {
-                    std::string filename = output_parent_dir + std::to_string(++file_count) + ".dna";
-                    std::ofstream out(filename);
-                    out << data[i] << "\n";
-                    std::for_each(collect.begin(), collect.end(), [&](const auto &item) { out << item << "\n"; });
-                    out.close();
-                }
-            }
-        }
-        extra1.close();
-        extra2.close();
-    }
-
-    // use jaccard similarity ground truth to compress dna data.
-    // 一边提取k-shingling一边计算jaccard_sim,这样的坏处是速度更慢,好处是节省了大量的储存空间
-    // TODO (如果要平衡这两者可以考虑哈希缓存部分的k_shingling集合,但是效果不一定好)
-    void ground_truth_dna_compress(const std::string &parent_dir) {
-        using namespace DNA_DATA;
-        std::vector<FLAG> flags(data.size(), FLAG::NOT_FIND);
-        size_t file_count = 0;
-        const std::string output_parent_dir = parent_dir + "ground_truth_split_result/";
-        for (size_t i = 0; i < data.size(); i++) {
-            if (flags[i] == FLAG::NOT_FIND) {
-                std::cout << "i : " << i << "\n";
-                flags[i] = FLAG::FIND_SUCCESS;
-                std::vector<std::string_view> collect;
-                auto dna_shingling_set_i = split_dna_shingling<k, WeightFlag::no_weight>(data[i]);
-                for (size_t j = i + 1; j < data.size(); j++) {
-                    if (flags[j] == FLAG::NOT_FIND) {
-                        std::cout << "j : " << j << "\n";
-                        auto dna_shingling_set_j = split_dna_shingling<k, WeightFlag::no_weight>(data[j]);
-                        double sim = jaccard_similarity(dna_shingling_set_i, dna_shingling_set_j);
-                        if (sim >= threshold) {
-                            std::cout << "hit..\n";
-                            flags[j] = FLAG::FIND_SUCCESS;
-                            collect.push_back(data[j]);
-                        }
-                    }
-                }
-                std::string filename = output_parent_dir + std::to_string(++file_count) + ".dna";
-                std::ofstream out(filename);
-                out << data[i] << "\n";
-                std::for_each(collect.begin(), collect.end(), [&](const auto &item) { out << item << "\n"; });
-                out.close();
-            }
-        }
-    }
-
-
     void lsh_query(const std::string &lsh_output_filename) {
         using namespace DNA_DATA;
         std::cout << "run lsh method ... \n";
@@ -453,6 +357,90 @@ namespace LSH_CPP::Benchmark {
 
 #endif
 
+//    简单的压缩思路
+//    enum class FLAG : uint8_t {
+//        FIND_SUCCESS = 1, NOT_FIND = 0
+//    };
+//
+//    void minhash_dna_compress(const std::string &parent_dir) {
+//        using namespace DNA_DATA;
+//        std::vector<FLAG> flags(minhash_set.size(), FLAG::NOT_FIND);
+//        const std::string output_parent_dir = parent_dir + "minhash/";
+//        int file_index = 0;
+//        for (size_t i = 0; i < minhash_set.size(); i++) {
+//            if (flags[i] == FLAG::NOT_FIND) {
+//                flags[i] = FLAG::FIND_SUCCESS;
+//                std::ofstream out(output_parent_dir + std::to_string(file_index++) + ".txt");
+//                out << i << "\n";
+//                for (size_t j = i + 1; j < minhash_set.size(); j++) {
+//                    if (flags[j] == FLAG::NOT_FIND) {
+//                        double sim = minhash_jaccard_similarity(minhash_set[i], minhash_set[j]);
+//                        if (sim >= threshold) {
+//                            std::cout << "hit:" << j << "\n";
+//                            flags[j] = FLAG::FIND_SUCCESS;
+//                            out << j << "\n";
+//                        }
+//                    }
+//                }
+//                out.close();
+//            }
+//        }
+//    }
+//
+//    // use jaccard similarity ground truth to compress dna data.
+//    // 一边提取k-shingling一边计算jaccard_sim,这样的坏处是速度更慢,好处是节省了大量的储存空间
+//    // TODO (如果要平衡这两者可以考虑哈希缓存部分的k_shingling集合,但是效果不一定好)
+//    void ground_truth_dna_compress(const std::string &parent_dir) {
+//        using namespace DNA_DATA;
+//        std::vector<FLAG> flags(data.size(), FLAG::NOT_FIND);
+//        const std::string output_parent_dir = parent_dir + "ground_truth/";
+//        int file_count = 0;
+//        for (size_t i = 0; i < data.size(); i++) {
+//            if (flags[i] == FLAG::NOT_FIND) {
+//                flags[i] = FLAG::FIND_SUCCESS;
+//                std::ofstream out(output_parent_dir + std::to_string(file_count++) + ".txt");
+//                out << i << "\n";
+//                auto dna_shingling_set_i = split_dna_shingling<k, WeightFlag::no_weight>(data[i]);
+//                for (size_t j = i + 1; j < data.size(); j++) {
+//                    if (flags[j] == FLAG::NOT_FIND) {
+//                        auto dna_shingling_set_j = split_dna_shingling<k, WeightFlag::no_weight>(data[j]);
+//                        double sim = jaccard_similarity(dna_shingling_set_i, dna_shingling_set_j);
+//                        if (sim >= threshold) {
+//                            std::cout << "hit:" << j << "\n";
+//                            flags[j] = FLAG::FIND_SUCCESS;
+//                            out << j << "\n";
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+
+    void minhash_output_graph_file(const std::string &parent_dir) {
+        using namespace DNA_DATA;
+        std::ofstream graph(parent_dir + "k=" + std::to_string(k)
+                            + "_threshold=" + std::to_string(threshold)
+                            + "_minhash.txt");
+        if (!graph.is_open()) {
+            fprintf(stderr, "Create File Fail.\n");
+            std::exit(-1);
+        }
+        std::vector<uint8_t> node_list(labels.size(), 0);
+        for (size_t i = 0; i < labels.size() - 1; i++) {
+            for (size_t j = i + 1; j < labels.size(); j++) {
+                double sim = minhash_jaccard_similarity(minhash_set[labels[i]], minhash_set[labels[j]]);
+                if (sim >= threshold) {
+                    std::cout << labels[i] << " " << labels[j] << " " << sim << "\n";
+                    graph << labels[i] << " " << labels[j] << " " << sim << "\n";
+                    node_list[i] = node_list[j] = 1;
+                }
+            }
+        }
+        // option: 计算存在相似的read个数(图节点个数).
+        std::cout << "node number:" << std::accumulate(node_list.begin(), node_list.end(), 0) << "\n";
+        graph.close();
+    }
+
     // [minhash linear scan] 与 [lsh(weight=0.1,0.9) + 过滤] 的比较中, lsh的结果比起minhash只少了一点
     // (因为lsh后面加上了过滤处理,所以lsh结果只会比minhash少,不会比minhash多),时间上lsh减少了一半,加速效率较好.
     // (这里的时间包括了处理和写入文件的所有时间)
@@ -497,20 +485,21 @@ namespace LSH_CPP::Benchmark {
         }
         std::cout << "mean abs error " << abs_mean_error / (double) (count) << "\n";
 #else
-//        for (size_t i = 0; i < data.size(); i++) labels.push_back(i);
-//        minhash_set.reserve(data.size());
-//        int progress = 0;
-//        for (const auto &doc : data) {
-//            std::cout << "process " << ++progress << " doc...\n";
-//            auto dna_shingling_set = split_dna_shingling<k, LSH_CPP::no_weight>(doc);
-//            MinHashType temp(StdDNAShinglingHash64<k>{});
-//            temp.update(dna_shingling_set);
-//            minhash_set.push_back(temp);
-//        }
-        ground_truth_dna_compress("sra/");
-//        minhash_dna_compress();
-//        minhash_linear_scan_query(minhash_output_filename_prefix + binary_file_suffix);
-//        lsh_query(lsh_output_filename_prefix + binary_file_suffix);
+        for (size_t i = 0; i < data.size(); i++) labels.push_back(i);
+        minhash_set.reserve(data.size());
+        int progress = 0;
+        for (const auto &doc : data) {
+            std::cout << "process " << ++progress << " doc...\n";
+            auto dna_shingling_set = split_dna_shingling<k, WeightFlag::no_weight>(doc);
+            MinHashType temp;
+            temp.update(dna_shingling_set);
+            minhash_set.push_back(temp);
+        }
+        minhash_output_graph_file("graph/");
+        // minhash_dna_compress("sra/");
+        // ground_truth_dna_compress("sra/");
+        // minhash_linear_scan_query(minhash_output_filename_prefix + binary_file_suffix);
+        // lsh_query(lsh_output_filename_prefix + binary_file_suffix);
 #endif
     }
 }

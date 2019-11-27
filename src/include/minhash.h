@@ -88,7 +88,7 @@ namespace LSH_CPP {
         using _hash_value_store_type = uint64_t;
 
         // min_hash 的实际类型取决于MinHashBits,所以这里的哈希值最大值也是由MinHashBits决定
-        const uint64_t _max_hash_range = HashValueType<MinHashBits>::max_hash_range;
+        static constexpr uint64_t _max_hash_range = HashValueType<MinHashBits>::max_hash_range;
     private:
         HashFunc hash_func;
         static RandomHashPermutation<Seed, RandomGenerator, n_permutation> permutation;
@@ -104,9 +104,10 @@ namespace LSH_CPP {
         static Cache cache; // 全局 lru_cache 加速 update 计算.
 
     public:
+        // TODO: 使用std::array<T,N>作为hash_value的类型.但是这个修改需要连带更改hash.h里面的接口.
         std::vector<_hash_value_store_type> hash_values;
 
-        explicit MinHash(HashFunc &&hash_func = XXStringViewHash32{}) : hash_func(hash_func) {
+        explicit MinHash(HashFunc &&hash_func = HashFunc{}) : hash_func(hash_func) {
             static_assert((MinHashBits == 32 || MinHashBits == 64));
             static_assert(n_permutation <= max_n_permutation);
             hash_values.resize(n_permutation, _max_hash_range);
